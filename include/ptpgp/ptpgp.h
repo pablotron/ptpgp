@@ -9,7 +9,11 @@
 typedef struct ptpgp_stream_parser_t_ ptpgp_stream_parser_t;
 
 typedef enum {
-  PTPGP_OK,
+  PTPGP_OK, /* ok (no error) */
+
+  /* error string errors */
+  PTPGP_ERR_ERROR_CODE_UNKNOWN, /* unknown error code */
+  PTPGP_ERR_ERROR_BUFFER_TOO_SMALL, /* output error buffer too small */
 
   /* stream parser errors */
   PTPGP_ERR_STREAM_PARSER_INCOMPLETE_PACKET, /* packet stream ended before end of packets */
@@ -35,9 +39,19 @@ typedef enum {
   /* base64 errors */
   PTPGP_ERR_BASE64_ALREADY_DONE, /* base64 context already done */
 
+  /* tag errors */
+  PTPGP_ERR_TAG_INVALID, /* invalid tag ID */
+  PTPGP_ERR_TAG_BUFFER_TOO_SMALL, /* tag output buffer too small */
+
   /* sentinel */
   PTPGP_ERR_LAST
 } ptpgp_err_t;
+
+ptpgp_err_t
+ptpgp_strerror(ptpgp_err_t err,
+               char *buf,
+               size_t buf_len,
+               size_t *out_len);
 
 #define PTPGP_PACKET_FLAG_NEW_PACKET     (1 << 0)
 #define PTPGP_PACKET_FLAG_INDETERMINITE  (1 << 1)
@@ -56,9 +70,9 @@ typedef enum {
   PTPGP_STREAM_PARSER_TOKEN_LAST
 } ptpgp_stream_parser_token_t;
 
-typedef ptpgp_err_t (*ptpgp_stream_parser_cb_t)(ptpgp_stream_parser_t *, 
-                                                ptpgp_stream_parser_token_t, 
-                                                ptpgp_packet_header_t *, 
+typedef ptpgp_err_t (*ptpgp_stream_parser_cb_t)(ptpgp_stream_parser_t *,
+                                                ptpgp_stream_parser_token_t,
+                                                ptpgp_packet_header_t *,
                                                 char *, size_t);
 typedef enum {
   PTPGP_STREAM_PARSER_STATE_NONE,
@@ -99,12 +113,12 @@ struct ptpgp_stream_parser_t_ {
 };
 
 ptpgp_err_t
-ptpgp_stream_parser_init(ptpgp_stream_parser_t *p, 
-                         ptpgp_stream_parser_cb_t cb, 
+ptpgp_stream_parser_init(ptpgp_stream_parser_t *p,
+                         ptpgp_stream_parser_cb_t cb,
                          void *cb_data);
 ptpgp_err_t
-ptpgp_stream_parser_push(ptpgp_stream_parser_t *p, 
-                         char *src, 
+ptpgp_stream_parser_push(ptpgp_stream_parser_t *p,
+                         char *src,
                          size_t src_len);
 ptpgp_err_t
 ptpgp_stream_parser_done(ptpgp_stream_parser_t *p);
@@ -126,8 +140,8 @@ typedef enum {
   PTPGP_ARMOR_PARSER_TOKEN_LAST
 } ptpgp_armor_parser_token_t;
 
-typedef ptpgp_err_t (*ptpgp_armor_parser_cb_t)(ptpgp_armor_parser_t *, 
-                                      ptpgp_armor_parser_token_t, 
+typedef ptpgp_err_t (*ptpgp_armor_parser_cb_t)(ptpgp_armor_parser_t *,
+                                      ptpgp_armor_parser_token_t,
                                       char *, size_t);
 
 typedef enum {
@@ -138,12 +152,12 @@ typedef enum {
   PTPGP_ARMOR_PARSER_STATE_BODY,
   PTPGP_ARMOR_PARSER_STATE_DONE,
   PTPGP_ARMOR_PARSER_STATE_LAST
-} ptpgp_arpmor_parser_state_t;
+} ptpgp_armor_parser_state_t;
 
 struct ptpgp_armor_parser_t_ {
   ptpgp_err_t last_err;
 
-  ptpgp_arpmor_parser_state_t state;
+  ptpgp_armor_parser_state_t state;
 
   ptpgp_armor_parser_cb_t cb;
   void *user_data;
@@ -189,17 +203,25 @@ struct ptpgp_base64_t_ {
 
 
 ptpgp_err_t
-ptpgp_base64_init(ptpgp_base64_t *p, 
-                  char encode, 
-                  ptpgp_base64_cb_t cb, 
+ptpgp_base64_init(ptpgp_base64_t *p,
+                  char encode,
+                  ptpgp_base64_cb_t cb,
                   void *user_data);
 
 ptpgp_err_t
-ptpgp_base64_push(ptpgp_base64_t *p, 
+ptpgp_base64_push(ptpgp_base64_t *p,
                   char *src,
                   size_t src_len);
 
 ptpgp_err_t
 ptpgp_base64_done(ptpgp_base64_t *p);
+
+
+
+ptpgp_err_t
+ptpgp_tag_to_s(uint32_t tag,
+               char *buf,
+               size_t buf_len,
+               size_t *out_len);
 
 #endif /* PTPGP_H */

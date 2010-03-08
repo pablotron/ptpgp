@@ -1,0 +1,7 @@
+syntax: glob
+
+*.o
+*.sw?
+
+test/dump-stream
+src/inc

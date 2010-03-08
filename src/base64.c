@@ -1,5 +1,4 @@
-#include <string.h> /* for memset()/memcmp() */
-#include <ptpgp/ptpgp.h>
+#include "internal.h"
 
 static char *lut = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                    "abcdefghijklmnopqrstuvwxyz"

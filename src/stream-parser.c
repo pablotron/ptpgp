@@ -1,6 +1,4 @@
-#include <string.h> /* for memset() */
-
-#include <ptpgp/ptpgp.h>
+#include "internal.h"
 
 #define DIE(p, err) do {                                              \
   return (p)->last_err = PTPGP_ERR_STREAM_PARSER_##err;               \
