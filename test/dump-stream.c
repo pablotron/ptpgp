@@ -29,7 +29,7 @@ file_open(char *path) {
     /* open input file */
     if ((r = fopen(path, "rb")) == NULL) {
       /* build error message */
-      snprintf(buf, sizeof(buf), "FATAL: Couldn't open file \"%s\"", path);
+      snprintf(buf, sizeof(buf), "[FATAL] Couldn't open file \"%s\"", path);
 
       /* print error message */
       perror(buf);
@@ -46,15 +46,15 @@ file_open(char *path) {
 static void
 file_close(FILE *fh) {
   if (fh != stdin && fclose(fh))
-    perror("WARNING: Couldn't close file");
+    perror("[WARNING] Couldn't close file");
 }
 
-static ptpgp_err_t 
-dump_cb(ptpgp_stream_parser_t *p, 
-        ptpgp_stream_parser_token_t t, 
-        ptpgp_packet_header_t *header, 
+static ptpgp_err_t
+dump_cb(ptpgp_stream_parser_t *p,
+        ptpgp_stream_parser_token_t t,
+        ptpgp_packet_header_t *header,
         char *data, size_t data_len) {
-  char buf[1024];
+  char buf[1024], errbuf[1024];
   ptpgp_err_t err;
 
   UNUSED(p);
@@ -62,7 +62,7 @@ dump_cb(ptpgp_stream_parser_t *p,
   UNUSED(data_len);
 
   /* skip non-start tokens */
-  if (t != PTPGP_STREAM_PARSER_TOKEN_START) 
+  if (t != PTPGP_STREAM_PARSER_TOKEN_START)
     return PTPGP_OK;
 
   /* get name of content tag */
@@ -70,11 +70,14 @@ dump_cb(ptpgp_stream_parser_t *p,
 
   /* check for error */
   if (err != PTPGP_OK) {
+    /* get ptpgp error */
+    ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
+
     /* print error */
     fprintf(
-      stderr, 
-      "FATAL: Couldn't get tag name %d: %s\n",
-      header->content_tag, "dunno"
+      stderr,
+      "[FATAL] Couldn't get tag name %d: %s (#%d)\n",
+      header->content_tag, errbuf, err
     );
 
     /* exit with error */
@@ -92,18 +95,21 @@ static void
 dump(char *path) {
   FILE *fh;
   int len;
-  char buf[1024];
+  char buf[1024], errbuf[1024];
   ptpgp_err_t err;
   ptpgp_stream_parser_t p;
-  
+
   /* init ptpgp stream parser */
   err = ptpgp_stream_parser_init(&p, dump_cb, path);
   if (err != PTPGP_OK) {
+    /* get ptpgp error */
+    ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
+
     /* print error message */
     fprintf(
       stderr,
-      "FATAL: Couldn't initialize stream parser for \"%s\": %s\n", 
-      path, "dunno"
+      "[FATAL] Couldn't initialize stream parser for \"%s\": %s (#%d)\n",
+      path, errbuf, err
     );
 
     /* exit with error */
@@ -120,11 +126,14 @@ dump(char *path) {
 
     /* handle error */
     if (err != PTPGP_OK) {
+      /* get ptpgp error */
+      ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
+
       /* print error message */
       fprintf(
         stderr,
-        "FATAL: Couldn't write data to parser: %s\n", 
-        "dunno"
+        "[FATAL] Couldn't write data to parser: %s (#%d)\n",
+        errbuf, err
       );
 
       /* exit with error */
@@ -140,10 +149,13 @@ dump(char *path) {
 
   /* handle error */
   if (err != PTPGP_OK) {
+    /* get ptpgp error */
+    ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
+
     fprintf(
       stderr,
-      "FATAL: Couldn't close stream parser: %s\n", 
-      "dunno"
+      "[FATAL] Couldn't close stream parser: %s (#%d)\n",
+      errbuf, err
     );
 
     /* exit with error */
