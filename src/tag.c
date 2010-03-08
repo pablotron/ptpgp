@@ -15,18 +15,23 @@ static char *tags[] = {
   "Literal Data Packet",
   "Trust Packet",
   "User ID Packet",
-  "Public Subkey Packet",
+  "Public-Subkey Packet",
+  NULL,
+  NULL,
+  "User Atatribute Packet",
+  "Sym. Encrypted and Integrity Protected Data Packet",
+  "Modification Detection Code Packet",
   NULL
 };
 
-static char *private_tag = "User-Defined Private or Experimental Value";
+static char *private_tag = "Private or Experimental Value";
 
 ptpgp_err_t
 ptpgp_tag_to_s(uint32_t tag, char *buf, size_t buf_len, size_t *out_len) {
   char *s;
   size_t len;
 
-  if (tag > 63 || (tag > 14 && tag < 60))
+  if (!IS_VALID_CONTENT_TAG(tag))
     return PTPGP_ERR_TAG_INVALID;
 
   /* get string and length of string */

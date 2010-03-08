@@ -3,10 +3,20 @@
 
 #include <stdint.h> /* for uint32_t */
 
-#define PTPGP_STREAM_PARSER_STATE_STACK_DEPTH        1024
-#define PTPGP_STREAM_PARSER_BUFFER_SIZE              4096
+#define PTPGP_VERSION "0.1.0"
 
-typedef struct ptpgp_stream_parser_t_ ptpgp_stream_parser_t;
+#ifndef u8
+#define u8 unsigned char
+#endif /* u8 */
+
+/* TODO: */
+typedef void* ptpgp_signature_subpacket_t;
+typedef void* ptpgp_mpi_t;
+
+
+/**********************/
+/* ERROR DECLARATIONS */
+/**********************/
 
 typedef enum {
   PTPGP_OK, /* ok (no error) */
@@ -53,15 +63,68 @@ ptpgp_strerror(ptpgp_err_t err,
                size_t buf_len,
                size_t *out_len);
 
+
+/********************/
+/* TAG DECLARATIONS */
+/********************/
+
+typedef enum {
+  PTPGP_TAG_RESERVED                                    =  0,
+  PTPGP_TAG_PUBLIC_KEY_ENCRYPTED_SESSION_KEY            =  1,
+  PTPGP_TAG_SIGNATURE_PACKET                            =  2,
+  PTPGP_TAG_SYMMETRIC_KEY_ENCRYPTED_SESSION_KEY         =  3,
+  PTPGP_TAG_ONE_PASS_SIGNATURE_PACKET                   =  4,
+  PTPGP_TAG_SECRET_KEY                                  =  5,
+  PTPGP_TAG_PUBLIC_KEY                                  =  6,
+  PTPGP_TAG_SECRET_SUBKEY                               =  7,
+  PTPGP_TAG_COMPRESSED_DATA                             =  8,
+  PTPGP_TAG_SYMMETRICALLY_ENCRYPTED_DATA                =  9,
+  PTPGP_TAG_MARKER                                      = 10,
+  PTPGP_TAG_LITERAL_DATA                                = 11,
+  PTPGP_TAG_TRUST                                       = 12,
+  PTPGP_TAG_USER_ID                                     = 13,
+  PTPGP_TAG_PUBLIC_SUBKEY                               = 14,
+
+  PTPGP_TAG_USER_ATTRIBUTE_PACKET                       = 17,
+  PTPGP_TAG_SYM_ENCRYPTED_AND_INTEGRITY_PROTECTED_DATA  = 18,
+  PTPGP_TAG_MODIFICATION_DETECTION_CODE                 = 19,
+
+  PTPGP_TAG_PRIVATE_OR_EXPERIMENTAL_60                  = 60,
+  PTPGP_TAG_PRIVATE_OR_EXPERIMENTAL_61                  = 61,
+  PTPGP_TAG_PRIVATE_OR_EXPERIMENTAL_62                  = 62,
+  PTPGP_TAG_PRIVATE_OR_EXPERIMENTAL_63                  = 63,
+
+  PTPGP_TAG_LAST                                        = 64
+} ptpgp_tag_t;
+
+ptpgp_err_t
+ptpgp_tag_to_s(ptpgp_tag_t tag,
+               char *buf,
+               size_t buf_len,
+               size_t *out_len);
+
+
+/******************************/
+/* PACKET HEADER DECLARATIONS */
+/******************************/
+
 #define PTPGP_PACKET_FLAG_NEW_PACKET     (1 << 0)
 #define PTPGP_PACKET_FLAG_INDETERMINITE  (1 << 1)
 #define PTPGP_PACKET_FLAG_PARTIAL        (1 << 2)
 
 typedef struct {
   uint32_t flags;
-  uint32_t content_tag;
+  ptpgp_tag_t content_tag;
   uint64_t length;
 } ptpgp_packet_header_t;
+
+
+/******************************/
+/* STREAM PARSER DECLARATIONS */
+/******************************/
+
+#define PTPGP_STREAM_PARSER_STATE_STACK_DEPTH        1024
+#define PTPGP_STREAM_PARSER_BUFFER_SIZE              4096
 
 typedef enum {
   PTPGP_STREAM_PARSER_TOKEN_START,
@@ -70,10 +133,12 @@ typedef enum {
   PTPGP_STREAM_PARSER_TOKEN_LAST
 } ptpgp_stream_parser_token_t;
 
+typedef struct ptpgp_stream_parser_t_ ptpgp_stream_parser_t;
+
 typedef ptpgp_err_t (*ptpgp_stream_parser_cb_t)(ptpgp_stream_parser_t *,
                                                 ptpgp_stream_parser_token_t,
                                                 ptpgp_packet_header_t *,
-                                                char *, size_t);
+                                                u8 *, size_t);
 typedef enum {
   PTPGP_STREAM_PARSER_STATE_NONE,
   PTPGP_STREAM_PARSER_STATE_NEW_HEADER_AFTER_TAG,
@@ -93,7 +158,7 @@ struct ptpgp_stream_parser_t_ {
   /* parser finished flag */
   char is_done;
 
-  unsigned char buf[PTPGP_STREAM_PARSER_BUFFER_SIZE];
+  u8 buf[PTPGP_STREAM_PARSER_BUFFER_SIZE];
   size_t buf_len;
 
   /* remaining octets for header length */
@@ -118,12 +183,15 @@ ptpgp_stream_parser_init(ptpgp_stream_parser_t *p,
                          void *cb_data);
 ptpgp_err_t
 ptpgp_stream_parser_push(ptpgp_stream_parser_t *p,
-                         char *src,
+                         u8 *src,
                          size_t src_len);
 ptpgp_err_t
 ptpgp_stream_parser_done(ptpgp_stream_parser_t *p);
 
 
+/*****************************/
+/* ARMOR PARSER DECLARATIONS */
+/*****************************/
 
 #define PTPGP_ARMOR_PARSER_BUFFER_SIZE          1024
 #define PTPGP_ARMOR_PARSER_OUTPUT_BUFFER_SIZE   1024
@@ -179,6 +247,9 @@ ptpgp_err_t
 ptpgp_armor_parser_done(ptpgp_armor_parser_t *p);
 
 
+/***************************************/
+/* BASE64 ENCODER/DECODER DECLARATIONS */
+/***************************************/
 
 #define PTPGP_BASE64_BUFFER_SIZE     1024
 
@@ -217,11 +288,89 @@ ptpgp_err_t
 ptpgp_base64_done(ptpgp_base64_t *p);
 
 
+/******************************/
+/* PACKET PARSER DECLARATIONS */
+/******************************/
 
-ptpgp_err_t
-ptpgp_tag_to_s(uint32_t tag,
-               char *buf,
-               size_t buf_len,
-               size_t *out_len);
+typedef struct ptpgp_packet_parser_t_ ptpgp_packet_parser_t;
+typedef ptpgp_err_t (*ptpgp_packet_parser_cb_t)(ptpgp_packet_parser_t *,
+                                                char *,
+                                                size_t);
+
+struct ptpgp_packet_parser_t_ {
+  ptpgp_packet_parser_cb_t cb;
+  void *user_data;
+};
+
+/*********************************/
+/* PACKET STRUCTURE DECLARATIONS */
+/*********************************/
+
+/* public key encrypted session key packet (tag 1, rfc4880 5.1) */
+typedef struct {
+  uint32_t version,
+           algorithm;
+
+  u8 key_id[8],
+     *session_key;
+
+  size_t session_key_len;
+} ptpgp_packet_public_key_encrypted_session_key_t;
+
+/* signature packet (tag 2, rfc4880 5.2.2) */
+typedef struct {
+  u8 version;
+
+  union {
+    /* v3 signature packet (rfc4880 5.2.2) */
+    struct {
+      uint32_t creation_time;
+
+      u8 signature_type,
+         signer_key_id[8],
+         public_key_algorithm,
+         hash_algorithm,
+         left16[2];
+
+      ptpgp_mpi_t **mpis;
+      size_t num_mpis;
+    } v3;
+
+    /* v4 signature packet (rfc480 5.2.3) */
+    struct {
+      u8 signature_type,
+         public_key_algorithm,
+         hash_algorithm,
+         left16[2];
+
+      /* length of subpacket data (in bytes) */
+      ptpgp_signature_subpacket_t  *hashed_subpackets;
+      size_t num_hashed_subpackets;
+
+      ptpgp_signature_subpacket_t  *unhashed_subpackets;
+      size_t num_unhashed_subpackets;
+
+      ptpgp_mpi_t **mpis;
+      size_t num_mpis;
+    } v4;
+  } versions;
+} ptpgp_packet_signature_t;
+
+typedef struct {
+  ptpgp_tag_t tag;
+  u8 *data;
+  size_t data_len;
+} ptpgp_packet_raw_t;
+
+typedef struct {
+  ptpgp_tag_t tag;
+
+  union {
+    ptpgp_packet_raw_t raw;
+    ptpgp_packet_public_key_encrypted_session_key_t t1;
+    ptpgp_packet_signature_t                        t2;
+  } types;
+} ptpgp_packet_t;
+
 
 #endif /* PTPGP_H */

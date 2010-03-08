@@ -7,3 +7,9 @@
 #else
 #define D(...)
 #endif /* PTPGP_DEBUG */
+
+#define IS_VALID_CONTENT_TAG(t) ( \
+  ((t) >   0 && (t) <= 14) ||     \
+  ((t) >= 17 && (t) <= 19) ||     \
+  ((t) >= 60 && (t) <= 63)        \
+)

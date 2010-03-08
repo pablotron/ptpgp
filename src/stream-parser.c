@@ -36,23 +36,19 @@
 } while (0)
 
 #define SHIFT(n) do {                                                 \
-  D("shifting %d bytes", (int) (n));                                  \
+  D("shifting %d byte%s", (int) (n), ((n) > 1) ? "s" : "");           \
                                                                       \
   /* check for input buffer overflow */                               \
   if ((n) > src_len)                                                  \
     DIE((p), INPUT_BUFFER_OVERFLOW);                                  \
                                                                       \
   /* shift input buffer ptr and length */                             \
-  src += n;                                                           \
-  src_len -= n;                                                       \
+  src += (n);                                                         \
+  src_len -= (n);                                                     \
 } while (0)
 
 #define ASSERT_VALID_CONTENT_TAG(p) do {                              \
-  /* rfc2440 4.3 (valid packet tags) */                               \
-  if ((p)->header.content_tag == 0    ||                              \
-      ((p)->header.content_tag > 14   &&                              \
-       (p)->header.content_tag < 60)  ||                              \
-      (p)->header.content_tag > 63)                                   \
+  if (!IS_VALID_CONTENT_TAG((p)->header.content_tag))                 \
     DIE((p), INVALID_CONTENT_TAG);                                    \
 } while (0)
 
@@ -85,7 +81,7 @@ ptpgp_stream_parser_init(ptpgp_stream_parser_t *p,
 
 ptpgp_err_t
 ptpgp_stream_parser_push(ptpgp_stream_parser_t *p, 
-                         char *src, 
+                         unsigned char *src, 
                          size_t src_len) {
   int c;
 
@@ -120,12 +116,14 @@ retry:
     /* grab first byte */
     c = src[0];
 
-    /* clear buffer and packet flags */
-    p->buf_len = 0;
-
-    memset(&(p->header), 0, sizeof(ptpgp_packet_header_t));
+    /* dump current byte */
+    D("c = %d", c);
 
     if (!p->state_len) {
+      /* clear buffer and packet header */
+      p->buf_len = 0;
+      memset(&(p->header), 0, sizeof(ptpgp_packet_header_t));
+
       /* check packet header tag (RFC2440 S4.2: bit 7 is always 1) */
       if (!(c & 0x80))
         DIE(p, BAD_PACKET_TAG);
@@ -161,6 +159,8 @@ retry:
         /* handle length type */
         switch (c & 0x3) {
         case 0:
+          D("remaining length octets = 1");
+
           p->remaining_length_octets = 1;
 
           /* push state */
@@ -168,6 +168,8 @@ retry:
 
           break;
         case 1:
+          D("remaining length octets = 2");
+
           p->remaining_length_octets = 2;
 
           /* push state */
@@ -175,6 +177,8 @@ retry:
 
           break;
         case 2:
+          D("remaining length octets = 4");
+
           p->remaining_length_octets = 4;
 
           /* push state */
@@ -182,6 +186,8 @@ retry:
 
           break;
         case 3:
+          D("remaining length octets = indeterminite");
+
           p->header.flags |= PTPGP_PACKET_FLAG_INDETERMINITE;
           p->remaining_length_octets = 0;
 
@@ -194,7 +200,7 @@ retry:
           DIE(p, BAD_OLD_PACKET_LENGTH_TYPE);
         }
 
-        /* shift header tag */
+        /* shift header byte */
         SHIFT(1);
         goto retry;
       }
@@ -205,11 +211,10 @@ retry:
       case PTPGP_STREAM_PARSER_STATE_OLD_HEADER_AFTER_TAG:
         /* append length octet to buffer */
         p->buf[p->buf_len++] = c;
+        SHIFT(1);
 
-        if (p->buf_len < p->remaining_length_octets) {
-          SHIFT(1);
+        if (p->buf_len < p->remaining_length_octets)
           goto retry;
-        }
 
         /* clear packet byte count */
         p->bytes_read = 0;
@@ -230,9 +235,11 @@ retry:
           DIE(p, INVALID_PACKET_LENGTH);
         }
 
+        D("packet length = %d bytes", (int) p->header.length);
+        p->buf_len = 0;
+
         SEND(p, START, 0, 0);
 
-        SHIFT(1);
         SWAP(p, BODY);
         goto retry;
 
@@ -247,8 +254,7 @@ retry:
         p->bytes_read = 0;
 
         if (p->buf[0] < 192) {
-          /* new-style one-octet packet length */
-          /* (rfc2440 4.2.2.1) */
+          D("new-style one-octet packet length (rfc4880 4.2.2.1)");
           p->header.length = p->buf[0];
 
           /* emit packet header */
@@ -257,8 +263,8 @@ retry:
           SWAP(p, BODY);
           goto retry;
         } else if (p->buf_len == 2 && p->buf[0] >= 192 && p->buf[0] <= 223) {
-          /* new-style two-octet packet length */
-          /* (rfc2440 4.2.2.2) */
+          D("new-style two-octet packet length (rfc4880 4.2.2.2)");
+
           p->header.length = ((p->buf[0] - 192) << 8) |
                               (p->buf[1] + 192);
 
@@ -268,8 +274,8 @@ retry:
           SWAP(p, BODY);
           goto retry;
         } else if (p->buf_len == 5 && p->buf[0] == 255) {
-          /* new-style five-octet packet length */
-          /* (rfc2440 4.2.2.3) */
+          D("new-style five-octet packet length (rfc4880 4.2.2.3)");
+
           p->header.length = (p->buf[1] << 24) | 
                              (p->buf[2] << 16) |
                              (p->buf[3] <<  8) |
@@ -281,12 +287,14 @@ retry:
           SWAP(p, BODY);
           goto retry;
         } else if (p->buf_len == 1 && p->buf[0] >= 224 && p->buf[0] < 255) {
-          /* new-style partial body packet length */
-          /* (rfc2440 4.2.2.4) */
+          D("new-style partial body packet length (rfc4880 4.2.2.4)");
 
           /* mark packet as partial and save partial body length */
           p->header.flags |= PTPGP_PACKET_FLAG_PARTIAL;
+          p->header.length = 0;
           p->partial_body_length = 1 << (p->buf[0] & 0x1f);
+
+          D("partial_body_length = %d", p->partial_body_length);
 
           /* emit packet header */
           SEND(p, START, 0, 0);
@@ -312,6 +320,8 @@ retry:
 
             p->buf_len = 0;
             p->partial_body_length = 0;
+
+            D("end of partial body");
 
             PUSH(p, PARTIAL_BODY_LENGTH);
             goto retry;
@@ -339,37 +349,58 @@ retry:
         SHIFT(1);
         
         if (p->buf[0] < 192) {
-          /* one-octet partial packet body length */
-          /* (rfc2440 4.2.2.1) */
-          p->partial_body_length = p->buf[0];
+          D("one-octet partial packet body length (rfc4880 4.2.2.1)");
 
           /* clear partial header flag */
           p->header.flags ^= PTPGP_PACKET_FLAG_PARTIAL;
+
+          /* save header length */
+          p->header.length = p->buf[0];
+
+          /* dump header length */
+          D("header.length = %d", (int) p->header.length);
 
           POP(p);
           goto retry;
         } else if (p->buf_len == 2 && p->buf[0] >= 192 && p->buf[0] <= 223) {
-          /* two-octet partial packet body length */
-          /* (rfc2440 4.2.2.2) */
-          p->partial_body_length = ((p->buf[0] - 192) << 8) |
-                                    (p->buf[1] + 192);
+          D("two-octet partial packet body length (rfc4880 4.2.2.2)");
 
           /* clear partial header flag */
           p->header.flags ^= PTPGP_PACKET_FLAG_PARTIAL;
 
+          /* save header length */
+          p->header.length = ((p->buf[0] - 192) << 8) |
+                              (p->buf[1] + 192);
+
+          /* dump header length */
+          D("header.length = %d", (int) p->header.length);
+
           POP(p);
           goto retry;
         } else if (p->buf_len == 5 && p->buf[0] == 255) {
-          /* unsupported 5-byte partial body length */
-          /* new-style five-octet packet length */
-          /* (rfc2440 4.2.2.4) */
-          DIE(p, INVALID_PARTIAL_BODY_LENGTH);
+          D("four-octet partial packet body length (rfc4880 4.2.2.3)");
+
+          /* clear partial header flag */
+          p->header.flags ^= PTPGP_PACKET_FLAG_PARTIAL;
+
+          /* save header length */
+          p->header.length = (p->buf[1] << 24) | 
+                             (p->buf[2] << 16) |
+                             (p->buf[3] <<  8) |
+                             (p->buf[4]);
+
+          /* dump header length */
+          D("header.length = %d", (int) p->header.length);
+
+          POP(p);
+          goto retry;
         } else if (p->buf_len == 1 && p->buf[0] >= 224 && p->buf[0] < 255) {
-          /* new-style partial body packet length */
-          /* (rfc2440 4.2.2.4) */
+          D("new-style partial body packet length (rfc4880 4.2.2.4)");
 
           /* save partial body length */
           p->partial_body_length = 1 << (p->buf[0] & 0x1f);
+
+          D("partial_body_length = %d", p->partial_body_length);
 
           POP(p);
           goto retry;

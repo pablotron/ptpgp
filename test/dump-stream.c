@@ -53,7 +53,8 @@ static ptpgp_err_t
 dump_cb(ptpgp_stream_parser_t *p,
         ptpgp_stream_parser_token_t t,
         ptpgp_packet_header_t *header,
-        char *data, size_t data_len) {
+        unsigned char *data, 
+        size_t data_len) {
   char buf[1024], errbuf[1024];
   ptpgp_err_t err;
 
@@ -95,7 +96,8 @@ static void
 dump(char *path) {
   FILE *fh;
   int len;
-  char buf[1024], errbuf[1024];
+  unsigned char buf[1024];
+  char errbuf[1024];
   ptpgp_err_t err;
   ptpgp_stream_parser_t p;
 
