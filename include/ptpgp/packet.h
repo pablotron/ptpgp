@@ -1,9 +1,12 @@
+/* TODO: */
+typedef void* ptpgp_signature_subpacket_t;
+typedef void* ptpgp_mpi_t;
+
 /* public key encrypted session key packet (tag 1, rfc4880 5.1) */
 typedef struct {
-  uint32_t version,
-           algorithm;
-
-  u8 key_id[8],
+  u8 version,
+     algorithm,
+     key_id[8],
      *session_key;
 
   size_t session_key_len;
@@ -61,5 +64,5 @@ typedef struct {
     ptpgp_packet_raw_t raw;
     ptpgp_packet_public_key_encrypted_session_key_t t1;
     ptpgp_packet_signature_t                        t2;
-  } types;
+  } packet;
 } ptpgp_packet_t;

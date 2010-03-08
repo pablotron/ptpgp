@@ -33,6 +33,12 @@ typedef enum {
   PTPGP_ERR_TAG_INVALID, /* invalid tag ID */
   PTPGP_ERR_TAG_BUFFER_TOO_SMALL, /* tag output buffer too small */
 
+  /* packet parser errors */
+  PTPGP_ERR_PACKET_PARSER_INVALID_STATE, /* invalid parser state (bug?) */
+  PTPGP_ERR_PACKET_PARSER_ALREADY_DONE, /* packet parser already done */
+  PTPGP_ERR_PACKET_PARSER_INPUT_BUFFER_OVERFLOW, /* input buffer overflow (bug?) */
+  PTPGP_ERR_PACKET_PARSER_BAD_PACKET_VERSION, /* bad packet version */
+
   /* sentinel */
   PTPGP_ERR_LAST
 } ptpgp_err_t;

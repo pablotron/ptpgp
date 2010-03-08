@@ -3,9 +3,11 @@
 
 #ifdef PTPGP_DEBUG
 #include <stdio.h>
-#define D(fmt, ...) fprintf(stderr, "[DEBUG] %s:%d:%s() " fmt "\n", __FILE__, __LINE__, __func__, ## __VA_ARGS__)
+#define D(fmt, ...) fprintf(stderr, "[D] %s:%d:%s() " fmt "\n", __FILE__, __LINE__, __func__, ## __VA_ARGS__)
+#define W(fmt, ...) fprintf(stderr, "[W] %s:%d:%s() " fmt "\n", __FILE__, __LINE__, __func__, ## __VA_ARGS__)
 #else
 #define D(...)
+#define W(...)
 #endif /* PTPGP_DEBUG */
 
 #define IS_VALID_CONTENT_TAG(t) ( \
