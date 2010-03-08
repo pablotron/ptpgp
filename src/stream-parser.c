@@ -1,10 +1,13 @@
 #include "internal.h"
 
 #define DIE(p, err) do {                                              \
+  D("returning error %s", #err);                                      \
   return (p)->last_err = PTPGP_ERR_STREAM_PARSER_##err;               \
 } while (0)
 
 #define PUSH(p, s) do {                                               \
+  D("pushing state %s", #s);                                          \
+                                                                      \
   /* check for state stack overflow */                                \
   if ((p)->state_len >= PTPGP_STREAM_PARSER_STATE_STACK_DEPTH - 1)    \
     DIE((p), STATE_STACK_OVERFLOW);                                   \
@@ -15,6 +18,8 @@
 } while (0)
 
 #define POP(p) do {                                                   \
+  D("popping state");                                                 \
+                                                                      \
   /* check for state stack underflow */                               \
   if ((p)->state_len == 0)                                            \
     DIE((p), STATE_STACK_UNDERFLOW);                                  \
@@ -31,6 +36,8 @@
 } while (0)
 
 #define SHIFT(n) do {                                                 \
+  D("shifting %d bytes", (int) (n));                                  \
+                                                                      \
   /* check for input buffer overflow */                               \
   if ((n) > src_len)                                                  \
     DIE((p), INPUT_BUFFER_OVERFLOW);                                  \
@@ -50,6 +57,8 @@
 } while (0)
 
 #define SEND(p, t, b, l) do {                                         \
+  D("sending %s data to callback (%d bytes)", #t, (int) (l));         \
+                                                                      \
   ptpgp_err_t err = (p)->cb(                                          \
     (p), (PTPGP_STREAM_PARSER_TOKEN_##t),                             \
     &((p)->header), (b), (l)                                          \
@@ -122,8 +131,12 @@ retry:
         DIE(p, BAD_PACKET_TAG);
 
       if (c & (1 << 6)) {
-        /* new-style packet header */
+        D("new-style packet header");
+
         p->header.flags |= PTPGP_PACKET_FLAG_NEW_PACKET;
+
+        /* dump content tag */
+        D("content_tag = %d", (c & 0x3f));
 
         /* save content tag */
         p->header.content_tag = (c & 0x3f);
@@ -136,7 +149,10 @@ retry:
         SHIFT(1);
         goto retry;
       } else {
-        /* old-style packet header */
+        D("old-style packet header");
+
+        /* dump content tag */
+        D("content_tag = %d", (c & 0x3f) >> 2);
 
         /* save content tag */
         p->header.content_tag = (c & 0x3f) >> 2;
@@ -183,6 +199,8 @@ retry:
         goto retry;
       }
     } else {
+      D("state = %d", PEEK(p));
+
       switch (PEEK(p)) {
       case PTPGP_STREAM_PARSER_STATE_OLD_HEADER_AFTER_TAG:
         /* append length octet to buffer */
