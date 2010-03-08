@@ -7,9 +7,9 @@ typedef struct {
   u8 version,
      algorithm,
      key_id[8],
-     *session_key;
+     *session_keys;
 
-  size_t session_key_len;
+  size_t num_session_keys;
 } ptpgp_packet_public_key_encrypted_session_key_t;
 
 /* signature packet (tag 2, rfc4880 5.2.2) */

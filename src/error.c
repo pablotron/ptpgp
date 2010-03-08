@@ -7,6 +7,9 @@ static char *errors[] = {
   "unknown error code",
   "output error buffer too small",
 
+  /* utility errors */
+  "destination buffer is too small",
+
   /* stream parser errors */
   "packet stream ended before end of packets",
   "callback returned an error",
@@ -34,6 +37,12 @@ static char *errors[] = {
   /* tag errors */
   "invalid tag ID",
   "tag output buffer too small",
+
+  /* packet parser errors */
+  "invalid parser state (bug?)",
+  "packet parser already done",
+  "input buffer overflow (bug?)",
+  "bad packet version",
 
   /* sentinel */
   NULL

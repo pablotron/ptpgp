@@ -5,6 +5,9 @@ typedef enum {
   PTPGP_ERR_ERROR_CODE_UNKNOWN, /* unknown error code */
   PTPGP_ERR_ERROR_BUFFER_TOO_SMALL, /* output error buffer too small */
 
+  /* utility errors */
+  PTPGP_ERR_HEX_DEST_BUF_TOO_SMALL, /* destination buffer is too small */
+
   /* stream parser errors */
   PTPGP_ERR_STREAM_PARSER_INCOMPLETE_PACKET, /* packet stream ended before end of packets */
   PTPGP_ERR_STREAM_PARSER_CALLBACK, /* callback returned an error */

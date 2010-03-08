@@ -14,6 +14,7 @@ extern "C" {
 #endif /* u8 */
 
 #include <ptpgp/error.h>
+#include <ptpgp/util.h>
 #include <ptpgp/tag.h>
 #include <ptpgp/packet-header.h>
 #include <ptpgp/stream-parser.h>

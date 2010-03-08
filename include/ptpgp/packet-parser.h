@@ -46,3 +46,15 @@ struct ptpgp_packet_parser_t_ {
   ptpgp_packet_parser_cb_t cb;
   void *user_data;
 };
+
+ptpgp_err_t
+ptpgp_packet_parser_init(ptpgp_packet_parser_t *p,
+                         ptpgp_tag_t tag,
+                         ptpgp_packet_parser_cb_t cb,
+                         void *user_data);
+ptpgp_err_t
+ptpgp_packet_parser_push(ptpgp_packet_parser_t *p, 
+                         u8 *src,
+                         size_t src_len);
+ptpgp_err_t
+ptpgp_packet_parser_done(ptpgp_packet_parser_t *p);
