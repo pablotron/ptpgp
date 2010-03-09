@@ -56,6 +56,9 @@ typedef enum {
   PTPGP_ERR_SIGNATURE_SUBPACKET_PARSER_ALREADY_DONE, /* signature subpacket parser already done */
   PTPGP_ERR_SIGNATURE_SUBPACKET_PARSER_INPUT_BUFFER_OVERFLOW, /* input buffer overflow (bug?) */
 
+  /* algorithm type errors */
+  PTPGP_ERR_ALGORITHM_UNKNOWN, /* unknown algorithm */
+
   /* sentinel */
   PTPGP_ERR_LAST
 } ptpgp_err_t;

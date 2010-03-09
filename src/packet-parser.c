@@ -198,13 +198,13 @@ retry:
           p->buf[p->buf_len++] = src[i];
 
           /* verify version number of packet */
-          if (p->buf[0] != 3 && p->buf[0] != 4) {
+          if (p->buf[0] < 2 || p->buf[0] > 4) {
             D("bad signature packet version = %d", p->buf[0]);
             DIE(p, BAD_PACKET_VERSION);
           }
 
-          if (p->buf[0] == 3 && p->buf_len == 19) {
-            /* v3 signature packet (rfc4880 5.2.2) */
+          if (p->buf[0] < 4 && p->buf_len == 19) {
+            /* v2/v3 signature packet (rfc4880 5.2.2) */
             ptpgp_packet_signature_t *pp = &(p->packet.packet.t2);
 
             /* populate packet version */

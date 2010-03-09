@@ -58,6 +58,9 @@ static char *errors[] = {
   "signature subpacket parser already done",
   "input buffer overflow (bug?)",
 
+  /* algorithm type errors */
+  "unknown algorithm",
+
   /* sentinel */
   NULL
 };
