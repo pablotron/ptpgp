@@ -1,9 +1,9 @@
 typedef enum {
   PTPGP_TAG_RESERVED                                    =  0,
   PTPGP_TAG_PUBLIC_KEY_ENCRYPTED_SESSION_KEY            =  1,
-  PTPGP_TAG_SIGNATURE_PACKET                            =  2,
+  PTPGP_TAG_SIGNATURE                                   =  2,
   PTPGP_TAG_SYMMETRIC_KEY_ENCRYPTED_SESSION_KEY         =  3,
-  PTPGP_TAG_ONE_PASS_SIGNATURE_PACKET                   =  4,
+  PTPGP_TAG_ONE_PASS_SIGNATURE                          =  4,
   PTPGP_TAG_SECRET_KEY                                  =  5,
   PTPGP_TAG_PUBLIC_KEY                                  =  6,
   PTPGP_TAG_SECRET_SUBKEY                               =  7,
@@ -15,7 +15,7 @@ typedef enum {
   PTPGP_TAG_USER_ID                                     = 13,
   PTPGP_TAG_PUBLIC_SUBKEY                               = 14,
 
-  PTPGP_TAG_USER_ATTRIBUTE_PACKET                       = 17,
+  PTPGP_TAG_USER_ATTRIBUTE                              = 17,
   PTPGP_TAG_SYM_ENCRYPTED_AND_INTEGRITY_PROTECTED_DATA  = 18,
   PTPGP_TAG_MODIFICATION_DETECTION_CODE                 = 19,
 

@@ -22,6 +22,7 @@ extern "C" {
 #include <ptpgp/base64.h>
 #include <ptpgp/packet.h>
 #include <ptpgp/packet-parser.h>
+#include <ptpgp/signature-type.h>
 
 #ifdef __cplusplus
 };

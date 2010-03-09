@@ -75,6 +75,7 @@ ptpgp_packet_parser_push(ptpgp_packet_parser_t *p,
 retry:
   if (src_len > 0) {
     switch (p->packet.tag) {
+    /* signature packet (t1, rfc4880 5.1) */
     case PTPGP_TAG_PUBLIC_KEY_ENCRYPTED_SESSION_KEY:
       switch (p->state) {
       case PTPGP_PACKET_PARSER_STATE_INIT:
@@ -154,6 +155,63 @@ retry:
       }
 
       break;
+
+    /* signature packet (t2, rfc4880 5.2) */
+    case PTPGP_TAG_SIGNATURE:
+      switch (p->state) {
+      case PTPGP_PACKET_PARSER_STATE_INIT:
+        for (i = 0; i < src_len; i++) {
+          p->buf[p->buf_len++] = src[i];
+
+          /* verify version number of packet */
+          if (p->buf[0] != 3 && p->buf[0] != 4)
+            DIE(p, BAD_PACKET_VERSION);
+
+          if (p->buf[0] == 3 && p->buf_len == 19) {
+            /* v3 signature packet (rfc4880 5.2.2) */
+            ptpgp_packet_signature_t *pp = &(p->packet.packet.t2);
+
+            /* populate packet version */
+            pp->version = p->buf[0];
+
+            /* verify hashed material length */
+            if (p->buf[1] != 5)
+              DIE(p, BAD_HASHED_MATERIAL_LENGTH);
+
+            pp->versions.v3.signature_type = p->buf[2];
+            pp->versions.v3.creation_time = 
+              (p->buf[3] << 24) |
+              (p->buf[4] << 16) |
+              (p->buf[5] <<  8) |
+              (p->buf[6]);
+
+            memcpy(pp->versions.v3.signer_key_id, p->buf + 7, 8);
+            pp->versions.v3.public_key_algorithm = p->buf[15];
+            pp->versions.v3.hash_algorithm = p->buf[16];
+            memcpy(pp->versions.v3.left16, p->buf + 17, 2); 
+
+            /* send packet header */
+            SEND(p, PACKET_START, 0, 0);
+
+            /* clear buffer */
+            p->buf_len = 0;
+
+            /* switch state */
+            p->state = PTPGP_PACKET_PARSER_STATE_MPI_LIST;
+            SHIFT(i);
+            goto retry;
+          } else if (p->buf[0] == 4 && p->buf_len == 6) {
+            /* v4 signature packet (rfc4880 5.2.3) */
+
+          } else {
+          }
+        }
+
+        break;
+      default:
+        /* never reached */
+        DIE(p, INVALID_STATE);
+      }
     default:
       W("unimplemented tag: %d", p->packet.tag);
     }
