@@ -43,6 +43,15 @@ static char *errors[] = {
   "packet parser already done",
   "input buffer overflow (bug?)",
   "bad packet version",
+  "bad hashed material length",
+  "invalid subpacket header",
+
+  /* signature type errors */
+  "unknown signature type",
+  "output buffer too small",
+
+  /* signature subpacket type errors */
+  "destination buffer too small for subpacket description",
 
   /* sentinel */
   NULL

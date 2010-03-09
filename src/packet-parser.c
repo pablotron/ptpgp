@@ -34,6 +34,37 @@
     return (p)->last_err = err;                                       \
 } while (0)
 
+#define STATE(s) PTPGP_PACKET_PARSER_STATE_##s
+
+#define SEND_SUBPACKET_HEADER(p, s, t) do {                           \
+  /* clear subpacket header */                                        \
+  memset(                                                             \
+    &((p)->subpacket_header), 0,                                      \
+    sizeof(ptpgp_signature_subpacket_header_t)                        \
+  );                                                                  \
+                                                                      \
+  /* save subpacket size and type */                                  \
+  (p)->subpacket_header.size = (s);                                   \
+  (p)->subpacket_header.type = (t);                                   \
+                                                                      \
+  /* flag critical subheaders */                                      \
+  if ((p)->subpacket_header.type & (1 << 7)) {                        \
+    (p)->subpacket_header.critical = 1;                               \
+    (p)->subpacket_header.type ^= (1 << 7);                           \
+  }                                                                   \
+                                                                      \
+  /* decriment remaining_bytes (blech) */                             \
+  (p)->remaining_bytes -= (p)->buf_len + (p)->subpacket_header.size;  \
+  (p)->buf_len = 0;                                                   \
+                                                                      \
+  /* send subpacket header */                                         \
+  SEND(                                                               \
+    (p), SIGNATURE_SUBPACKET_START,                                   \
+    (u8*) &((p)->subpacket_header),                                   \
+    sizeof(ptpgp_signature_subpacket_header_t)                        \
+  );                                                                  \
+} while (0)
+
 ptpgp_err_t
 ptpgp_packet_parser_init(ptpgp_packet_parser_t *p,
                          ptpgp_tag_t tag,
@@ -55,6 +86,7 @@ ptpgp_packet_parser_push(ptpgp_packet_parser_t *p,
                          u8 *src,
                          size_t src_len) {
   size_t i;
+  uint32_t sp_size, sp_type;
 
   if (p->last_err)
     return p->last_err;
@@ -78,14 +110,16 @@ retry:
     /* signature packet (t1, rfc4880 5.1) */
     case PTPGP_TAG_PUBLIC_KEY_ENCRYPTED_SESSION_KEY:
       switch (p->state) {
-      case PTPGP_PACKET_PARSER_STATE_INIT:
+      case STATE(INIT):
         for (i = 0; i < src_len; i++) {
           p->buf[p->buf_len++] = src[i];
 
           if (p->buf_len == 10) {
             /* verify version number of packet */
-            if (p->buf[0] != 3)
+            if (p->buf[0] != 3) {
+              D("packet version = %d", p->buf[0]);
               DIE(p, BAD_PACKET_VERSION);
+            }
 
             /* populate packet */
             p->packet.packet.t1.version = p->buf[0];
@@ -99,14 +133,14 @@ retry:
             p->buf_len = 0;
 
             /* switch state */
-            p->state = PTPGP_PACKET_PARSER_STATE_MPI_LIST;
+            p->state = STATE(MPI_LIST);
             SHIFT(i);
             goto retry;
           }
         }
 
         break;
-      case PTPGP_PACKET_PARSER_STATE_MPI_LIST:
+      case STATE(MPI_LIST):
         for (i = 0; i < src_len; i++) {
           p->buf[p->buf_len++] = src[i];
 
@@ -122,14 +156,14 @@ retry:
             p->buf_len = 0;
 
             /* switch state */
-            p->state = PTPGP_PACKET_PARSER_STATE_MPI_BODY;
+            p->state = STATE(MPI_BODY);
             SHIFT(i);
             goto retry;
           }
         }
 
         break;
-      case PTPGP_PACKET_PARSER_STATE_MPI_BODY:
+      case STATE(MPI_BODY):
         if (src_len < p->remaining_bytes) {
           /* send mpi body fragment */
           SEND(p, MPI_BODY, src, src_len);
@@ -143,7 +177,7 @@ retry:
           SEND(p, MPI_END, 0, 0);
 
           /* switch state */
-          p->state = PTPGP_PACKET_PARSER_STATE_MPI_LIST;
+          p->state = STATE(MPI_LIST);
           SHIFT(p->remaining_bytes);
           goto retry;
         }
@@ -159,13 +193,15 @@ retry:
     /* signature packet (t2, rfc4880 5.2) */
     case PTPGP_TAG_SIGNATURE:
       switch (p->state) {
-      case PTPGP_PACKET_PARSER_STATE_INIT:
+      case STATE(INIT):
         for (i = 0; i < src_len; i++) {
           p->buf[p->buf_len++] = src[i];
 
           /* verify version number of packet */
-          if (p->buf[0] != 3 && p->buf[0] != 4)
+          if (p->buf[0] != 3 && p->buf[0] != 4) {
+            D("bad signature packet version = %d", p->buf[0]);
             DIE(p, BAD_PACKET_VERSION);
+          }
 
           if (p->buf[0] == 3 && p->buf_len == 19) {
             /* v3 signature packet (rfc4880 5.2.2) */
@@ -197,13 +233,243 @@ retry:
             p->buf_len = 0;
 
             /* switch state */
-            p->state = PTPGP_PACKET_PARSER_STATE_MPI_LIST;
+            p->state = STATE(MPI_LIST);
             SHIFT(i);
             goto retry;
           } else if (p->buf[0] == 4 && p->buf_len == 6) {
             /* v4 signature packet (rfc4880 5.2.3) */
 
-          } else {
+            ptpgp_packet_signature_t *pp = &(p->packet.packet.t2);
+
+            /* populate packet version */
+            pp->version = p->buf[0];
+
+            /* populate signature type, pk algo, and hash algo */
+            pp->versions.v3.signature_type = p->buf[1];
+            pp->versions.v3.public_key_algorithm = p->buf[2];
+            pp->versions.v3.hash_algorithm = p->buf[3];
+
+            /* send packet header */
+            SEND(p, PACKET_START, 0, 0);
+
+            p->remaining_bytes = (p->buf[4] << 8) | p->buf[5];
+
+            /* send hashed list start */
+            SEND(p, SIGNATURE_SUBPACKET_HASHED_LIST_START, 0, 0);
+
+            p->buf_len = 0;
+            p->state = STATE(SIGNATURE_SUBPACKET_HASHED_LIST);
+            SHIFT(i);
+            goto retry;
+          }
+        }
+
+        break;
+      case STATE(MPI_LIST):
+        for (i = 0; i < src_len; i++) {
+          p->buf[p->buf_len++] = src[i];
+
+          if (p->buf_len == 2) {
+            size_t num_bits = (p->buf[0] << 8) | p->buf[1];
+
+            p->remaining_bytes = (num_bits + 7) / 8;
+
+            /* send packet */
+            SEND(p, MPI_START, (u8*) &(num_bits), sizeof(size_t));
+
+            /* clear buffer */
+            p->buf_len = 0;
+
+            /* switch state */
+            p->state = STATE(MPI_BODY);
+            SHIFT(i);
+            goto retry;
+          }
+        }
+
+        break;
+      case STATE(MPI_BODY):
+        if (src_len < p->remaining_bytes) {
+          /* send mpi body fragment */
+          SEND(p, MPI_BODY, src, src_len);
+          p->remaining_bytes -= src_len;
+
+          /* return success */
+          return PTPGP_OK;
+        } else {
+          /* send final mpi body fragment and end notice */
+          SEND(p, MPI_BODY, src, p->remaining_bytes);
+          SEND(p, MPI_END, 0, 0);
+
+          /* switch state */
+          p->state = STATE(MPI_LIST);
+          SHIFT(p->remaining_bytes);
+          goto retry;
+        }
+
+        break;
+      case STATE(SIGNATURE_SUBPACKET_HASHED_LIST):
+        if (!p->remaining_bytes) {
+          /* send hashed list end */
+          SEND(p, SIGNATURE_SUBPACKET_HASHED_LIST_END, 0, 0);
+
+          p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED_LIST_SIZE);
+          goto retry;
+        }
+
+        for (i = 0; i < src_len; i++) {
+          p->buf[p->buf_len++] = src[i];
+
+          if (p->buf_len == 2 && p->buf[0] < 192) {
+            sp_size = p->buf[0];
+            sp_type = p->buf[1];
+
+            SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
+            
+            p->state = STATE(SIGNATURE_SUBPACKET_HASHED);
+            SHIFT(i);
+            goto retry;
+          } else if (p->buf_len == 3 && p->buf[0] >= 192 && p->buf[0] < 255) {
+            sp_size = ((p->buf[0] - 192) << 8) + p->buf[1] + 192;
+            sp_type = p->buf[2];
+
+            SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
+            
+            p->state = STATE(SIGNATURE_SUBPACKET_HASHED);
+            SHIFT(i);
+            goto retry;
+          } else if (p->buf_len == 6 && p->buf[0] == 255) {
+            sp_size = (p->buf[1] << 24) | 
+                      (p->buf[2] << 16) | 
+                      (p->buf[3] <<  8) | 
+                      (p->buf[4]);
+            sp_type = p->buf[5];
+
+            SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
+            
+            p->state = STATE(SIGNATURE_SUBPACKET_HASHED);
+            SHIFT(i);
+            goto retry;
+          } else if (p->buf_len > 6) {
+            DIE(p, INVALID_SUBPACKET_HEADER);
+          }
+        }
+
+        break;
+      case STATE(SIGNATURE_SUBPACKET_HASHED):
+        /* actual subpacket parsing */
+        if (src_len < p->subpacket_header.size) {
+          /* send hashed subpacket fragment */
+          SEND(p, SIGNATURE_SUBPACKET_BODY, src, src_len);
+          p->subpacket_header.size -= src_len;
+
+          /* return success */
+          return PTPGP_OK;
+        } else {
+          SEND(p, SIGNATURE_SUBPACKET_BODY, src, p->subpacket_header.size);
+          SEND(p, SIGNATURE_SUBPACKET_END, 0, 0);
+
+          p->state = STATE(SIGNATURE_SUBPACKET_HASHED_LIST);
+          SHIFT(p->subpacket_header.size);
+          goto retry;
+        }
+
+        break;
+      case STATE(SIGNATURE_SUBPACKET_UNHASHED_LIST_SIZE):
+        for (i = 0; i < src_len; i++) {
+          p->buf[p->buf_len++] = src[i];
+
+          if (p->buf_len == 2) {
+            p->remaining_bytes = (p->buf[0] << 8) | p->buf[1];
+
+            /* send unhashed list start */
+            SEND(p, SIGNATURE_SUBPACKET_UNHASHED_LIST_START, 0, 0);
+
+            p->buf_len = 0;
+            p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED_LIST);
+            SHIFT(i);
+            goto retry;
+          }
+        }
+
+        break;
+      case STATE(SIGNATURE_SUBPACKET_UNHASHED_LIST):
+        if (!p->remaining_bytes) {
+          /* send unhashed list end */
+          SEND(p, SIGNATURE_SUBPACKET_UNHASHED_LIST_END, 0, 0);
+
+          p->state = STATE(SIGNATURE_LEFT16);
+          goto retry;
+        }
+
+        for (i = 0; i < src_len; i++) {
+          p->buf[p->buf_len++] = src[i];
+
+          if (p->buf_len == 2 && p->buf[0] < 192) {
+            sp_size = p->buf[0];
+            sp_type = p->buf[1];
+
+            SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
+            
+            p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED);
+            SHIFT(i);
+            goto retry;
+          } else if (p->buf_len == 3 && p->buf[0] >= 192 && p->buf[0] < 255) {
+            sp_size = ((p->buf[0] - 192) << 8) + p->buf[1] + 192;
+            sp_type = p->buf[2];
+
+            SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
+            
+            p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED);
+            SHIFT(i);
+            goto retry;
+          } else if (p->buf_len == 6 && p->buf[0] == 255) {
+            sp_size = (p->buf[1] << 24) | 
+                      (p->buf[2] << 16) | 
+                      (p->buf[3] <<  8) | 
+                      (p->buf[4]);
+            sp_type = p->buf[5];
+
+            SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
+            
+            p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED);
+            SHIFT(i);
+            goto retry;
+          } else if (p->buf_len > 6) {
+            DIE(p, INVALID_SUBPACKET_HEADER);
+          }
+        }
+
+        break;
+      case STATE(SIGNATURE_SUBPACKET_UNHASHED):
+        /* actual subpacket parsing */
+        if (src_len < p->subpacket_header.size) {
+          /* send subpacket fragment */
+          SEND(p, SIGNATURE_SUBPACKET_BODY, src, src_len);
+          p->subpacket_header.size -= src_len;
+
+          /* return success */
+          return PTPGP_OK;
+        } else {
+          SEND(p, SIGNATURE_SUBPACKET_BODY, src, p->subpacket_header.size);
+          SEND(p, SIGNATURE_SUBPACKET_END, 0, 0);
+
+          p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED_LIST);
+          SHIFT(p->subpacket_header.size);
+          goto retry;
+        }
+
+        break;
+      case STATE(SIGNATURE_LEFT16):
+        for (i = 0; i < src_len; i++) {
+          p->buf[p->buf_len++] = src[i];
+
+          if (p->buf_len == 2) {
+            SEND(p, SIGNATURE_LEFT16, p->buf, 2);
+
+            p->state = STATE(MPI_LIST);
+            SHIFT(i);
+            goto retry;
           }
         }
 
@@ -212,6 +478,8 @@ retry:
         /* never reached */
         DIE(p, INVALID_STATE);
       }
+
+      break;
     default:
       W("unimplemented tag: %d", p->packet.tag);
     }

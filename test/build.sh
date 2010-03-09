@@ -1,7 +1,7 @@
 #!/bin/sh
 
-# INC=-I../include -DPTPGP_DEBUG
-INC=-I../include
+INC="-I../include -DPTPGP_DEBUG"
+# INC=-I../include
 
 cd ../src
 for i in *.c; do

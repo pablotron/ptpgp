@@ -59,52 +59,126 @@ dump_packet_cb(ptpgp_packet_parser_t *p,
   u8 key_id[20];
   char errbuf[1024];
   ptpgp_err_t err;
+  ptpgp_signature_subpacket_header_t *subpacket_header;
 
   UNUSED(p);
   UNUSED(data);
   UNUSED(data_len);
 
-  /* ignore unknown tags */
-  if (packet->tag != PTPGP_TAG_PUBLIC_KEY_ENCRYPTED_SESSION_KEY)
-    return PTPGP_OK;
+  switch (packet->tag) {
+  case PTPGP_TAG_PUBLIC_KEY_ENCRYPTED_SESSION_KEY:
+    switch (t) {
+    case PTPGP_PACKET_PARSER_TOKEN_PACKET_START:
+      /* convert key id to hex */
+      memset(key_id, 0, sizeof(key_id));
+      err = ptpgp_to_hex(packet->packet.t1.key_id, 8, key_id, sizeof(key_id));
 
-  switch (t) {
-  case PTPGP_PACKET_PARSER_TOKEN_PACKET_START:
-    /* convert key id to hex */
-    memset(key_id, 0, sizeof(key_id));
-    err = ptpgp_to_hex(packet->packet.t1.key_id, 8, key_id, sizeof(key_id));
+      /* check for error */
+      if (err != PTPGP_OK) {
+        /* get ptpgp error */
+        ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
 
-    /* check for error */
-    if (err != PTPGP_OK) {
-      /* get ptpgp error */
-      ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
+        /* print error */
+        fprintf(
+          stderr,
+          "[FATAL] Couldn't convert key id to hex: %s (#%d)\n",
+          errbuf, err
+        );
 
-      /* print error */
-      fprintf(
-        stderr,
-        "[FATAL] Couldn't convert key id to hex: %s (#%d)\n",
-        errbuf, err
+        /* exit with error */
+        exit(EXIT_FAILURE);
+      }
+
+      /* dump packet contents */
+      printf(
+        "  version = %d, algorithm = %d, key_id = 0x%s\n",
+        packet->packet.t1.version,
+        packet->packet.t1.algorithm,
+        key_id
       );
 
-      /* exit with error */
-      exit(EXIT_FAILURE);
+      break;
+    case PTPGP_PACKET_PARSER_TOKEN_MPI_START:
+      printf("  mpi: num_bits = %d\n", (int) *((size_t*) data));
+
+      break;
+    default: 
+      /* ignore unknown tokens */
+      return PTPGP_OK;
     }
 
-    /* dump packet contents */
-    printf(
-      "  version = %d, algorithm = %d, key_id = 0x%s\n",
-      packet->packet.t1.version,
-      packet->packet.t1.algorithm,
-      key_id
-    );
+    break;
+  case PTPGP_TAG_SIGNATURE:
+    switch (t) {
+    case PTPGP_PACKET_PARSER_TOKEN_PACKET_START:
+      switch (packet->packet.t2.version) {
+      case 3:
+        /* convert key id to hex */
+        memset(key_id, 0, sizeof(key_id));
+        err = ptpgp_to_hex(
+          packet->packet.t2.versions.v3.signer_key_id, 
+          8, key_id, sizeof(key_id)
+        );
+
+        /* check for error */
+        if (err != PTPGP_OK) {
+          /* get ptpgp error */
+          ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
+
+          /* print error */
+          fprintf(
+            stderr,
+            "[FATAL] Couldn't convert key id to hex: %s (#%d)\n",
+            errbuf, err
+          );
+
+          /* exit with error */
+          exit(EXIT_FAILURE);
+        }
+
+        /* dump packet contents */
+        printf(
+          "  version = %d, signature_type = %d, public_key_algorithm = %d, hash_algorithm = %d, key_id = 0x%s\n",
+          packet->packet.t2.version,
+          packet->packet.t2.versions.v3.signature_type,
+          packet->packet.t2.versions.v3.public_key_algorithm,
+          packet->packet.t2.versions.v3.hash_algorithm,
+          key_id
+        );
+
+        break;
+      case 4:
+        break;
+      default:
+        /* ignore unknown versions */
+        return PTPGP_OK;
+      }
+
+      break;
+    case PTPGP_PACKET_PARSER_TOKEN_MPI_START:
+      printf("  mpi: num_bits = %d\n", (int) *((size_t*) data));
+
+      break;
+    case PTPGP_PACKET_PARSER_TOKEN_SIGNATURE_SUBPACKET_START:
+      /* get subpacket header */
+      subpacket_header = (ptpgp_signature_subpacket_header_t*) data;
+
+      /* dump subpacket information */
+      printf(
+        "  subpacket: type = %d, size = %d\n",
+        subpacket_header->type,
+        subpacket_header->size
+      );
+
+      break;
+    default: 
+      /* ignore unknown tokens */
+      return PTPGP_OK;
+    }
 
     break;
-  case PTPGP_PACKET_PARSER_TOKEN_MPI_START:
-    printf("  mpi: num_bits = %d\n", (int) *((size_t*) data));
-
-    break;
-  default: 
-    /* ignore unknown tokens */
+  default:
+    /* ignore unknown tags */
     return PTPGP_OK;
   }
 

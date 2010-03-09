@@ -42,10 +42,14 @@ typedef enum {
   PTPGP_ERR_PACKET_PARSER_INPUT_BUFFER_OVERFLOW, /* input buffer overflow (bug?) */
   PTPGP_ERR_PACKET_PARSER_BAD_PACKET_VERSION, /* bad packet version */
   PTPGP_ERR_PACKET_PARSER_BAD_HASHED_MATERIAL_LENGTH, /* bad hashed material length */
+  PTPGP_ERR_PACKET_PARSER_INVALID_SUBPACKET_HEADER, /* invalid subpacket header */
 
   /* signature type errors */
   PTPGP_ERR_SIGNATURE_TYPE_UNKNOWN_TYPE, /* unknown signature type */
   PTPGP_ERR_SIGNATURE_TYPE_DEST_BUFFER_TOO_SMALL, /* output buffer too small */
+
+  /* signature subpacket type errors */
+  PTPGP_ERR_SIGNATURE_SUBPACKET_TYPE_DEST_BUFFER_TO_SMALL, /* destination buffer too small for subpacket description */
 
   /* sentinel */
   PTPGP_ERR_LAST
