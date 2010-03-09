@@ -53,6 +53,11 @@ static char *errors[] = {
   /* signature subpacket type errors */
   "destination buffer too small for subpacket description",
 
+  /* signature subpacket parser errors */
+  "invalid subpacket parser state (bug?)",
+  "signature subpacket parser already done",
+  "input buffer overflow (bug?)",
+
   /* sentinel */
   NULL
 };

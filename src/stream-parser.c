@@ -310,13 +310,18 @@ retry:
       case PTPGP_STREAM_PARSER_STATE_BODY:
         if (p->header.flags & PTPGP_PACKET_FLAG_PARTIAL) { 
           if (src_len < p->partial_body_length) {
-            p->partial_body_length -= src_len;
-            SEND(p, BODY, src, src_len);
+            if (src_len > 0) {
+              SEND(p, BODY, src, src_len);
+              p->partial_body_length -= src_len;
+            }
+
             return PTPGP_OK;
           } else {
-            SEND(p, BODY, src, p->partial_body_length);
+            if (p->partial_body_length > 0) {
+              SEND(p, BODY, src, p->partial_body_length);
 
-            SHIFT(p->partial_body_length);
+              SHIFT(p->partial_body_length);
+            }
 
             p->buf_len = 0;
             p->partial_body_length = 0;
@@ -328,14 +333,20 @@ retry:
           }
         } else {
           if (p->bytes_read + src_len < p->header.length) {
-            SEND(p, BODY, src, src_len);
-            p->bytes_read += src_len;
+            if (src_len > 0) {
+              SEND(p, BODY, src, src_len);
+              p->bytes_read += src_len;
+            }
+
             return PTPGP_OK;
           } else {
-            SEND(p, BODY, src, p->header.length - p->bytes_read);
+            if (p->header.length - p->bytes_read > 0) {
+              SEND(p, BODY, src, p->header.length - p->bytes_read);
+              SHIFT(p->header.length - p->bytes_read);
+            }
+
             SEND(p, END, 0, 0);
 
-            SHIFT(p->header.length - p->bytes_read);
             POP(p);
             goto retry;
           }

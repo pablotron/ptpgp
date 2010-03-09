@@ -291,19 +291,25 @@ retry:
       case STATE(MPI_BODY):
         if (src_len < p->remaining_bytes) {
           /* send mpi body fragment */
-          SEND(p, MPI_BODY, src, src_len);
-          p->remaining_bytes -= src_len;
+          if (src_len > 0) {
+            SEND(p, MPI_BODY, src, src_len);
+            p->remaining_bytes -= src_len;
+          }
 
           /* return success */
           return PTPGP_OK;
         } else {
           /* send final mpi body fragment and end notice */
-          SEND(p, MPI_BODY, src, p->remaining_bytes);
+          if (p->remaining_bytes > 0) {
+            SEND(p, MPI_BODY, src, p->remaining_bytes);
+            SHIFT(p->remaining_bytes);
+          }
+
+          /* send end notice */
           SEND(p, MPI_END, 0, 0);
 
           /* switch state */
           p->state = STATE(MPI_LIST);
-          SHIFT(p->remaining_bytes);
           goto retry;
         }
 
@@ -360,13 +366,17 @@ retry:
         /* actual subpacket parsing */
         if (src_len < p->subpacket_header.size) {
           /* send hashed subpacket fragment */
-          SEND(p, SIGNATURE_SUBPACKET_BODY, src, src_len);
-          p->subpacket_header.size -= src_len;
+          if (src_len > 0) {
+            SEND(p, SIGNATURE_SUBPACKET_BODY, src, src_len);
+            p->subpacket_header.size -= src_len;
+          }
 
           /* return success */
           return PTPGP_OK;
         } else {
-          SEND(p, SIGNATURE_SUBPACKET_BODY, src, p->subpacket_header.size);
+          if (p->subpacket_header.size > 0)
+            SEND(p, SIGNATURE_SUBPACKET_BODY, src, p->subpacket_header.size);
+
           SEND(p, SIGNATURE_SUBPACKET_END, 0, 0);
 
           p->state = STATE(SIGNATURE_SUBPACKET_HASHED_LIST);
