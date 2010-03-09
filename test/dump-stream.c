@@ -4,10 +4,10 @@
 #include <string.h>
 #include <ptpgp/ptpgp.h>
 
-#define IS_HELP(s) (              \
-  !strncasecmp((s), "-h", 3) ||   \
-  !strncasecmp((s), "-?", 3) ||   \
-  !strncasecmp((s), "--help", 3)  \
+#define IS_HELP(s) (          \
+  !strncmp((s), "-h", 3) ||   \
+  !strncmp((s), "-?", 3) ||   \
+  !strncmp((s), "--help", 3)  \
 )
 
 #define UNUSED(a) ((void) (a))
@@ -100,7 +100,7 @@ dump_packet_cb(ptpgp_packet_parser_t *p,
 
     break;
   case PTPGP_PACKET_PARSER_TOKEN_MPI_START:
-    printf("  mpi: num_bits = %d\n", *((size_t*) data));
+    printf("  mpi: num_bits = %d\n", (int) *((size_t*) data));
 
     break;
   default: 
