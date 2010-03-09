@@ -60,6 +60,10 @@ typedef enum {
   PTPGP_ERR_ALGORITHM_UNKNOWN, /* unknown algorithm */
   PTPGP_ERR_ALGORITHM_DEST_BUFFER_TOO_SMALL, /* output buffer too small */
 
+  /* s2k errors */
+  PTPGP_ERR_S2K_MISSING_SALT, /* S2K salt is NULL */
+  PTPGP_ERR_S2K_DEST_BUFFER_TOO_SMALL, /* output buffer too small */
+
   /* sentinel */
   PTPGP_ERR_LAST
 } ptpgp_err_t;

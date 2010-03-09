@@ -52,6 +52,12 @@ typedef struct {
 } ptpgp_packet_signature_t;
 
 typedef struct {
+  u8                                    version;
+  ptpgp_symmetric_key_algorithm_type_t  algorithm;
+  ptpgp_s2k_t                           s2k;
+} ptpgp_packet_symmetric_key_encrypted_session_key_t;
+
+typedef struct {
   ptpgp_tag_t tag;
   u8 *data;
   size_t data_len;
@@ -64,5 +70,6 @@ typedef struct {
     ptpgp_packet_raw_t raw;
     ptpgp_packet_public_key_encrypted_session_key_t t1;
     ptpgp_packet_signature_t                        t2;
+    ptpgp_packet_signature_t                        t3;
   } packet;
 } ptpgp_packet_t;

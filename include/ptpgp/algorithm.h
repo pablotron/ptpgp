@@ -26,6 +26,9 @@ typedef enum {
   /* hash algorithms (rfc4880 9.4) */
   H(HASH),
 
+  /* s2k algorithms (rfc4880 3.7) */
+  H(S2K),
+
   /* sentinel */
   H(LAST)
 } ptpgp_algorithm_type_t;
@@ -119,6 +122,18 @@ typedef enum {
   FOOTER
 } ptpgp_hash_algorithm_type_t;
 #undef H
+
+#define H(a) PTPGP_S2K_ALGORITHM_TYPE_##a
+typedef enum {
+  H(SIMPLE)               = 0,
+  H(SALTED)               = 1,
+  H(RESERVED)             = 2,
+  H(ITERATED_AND_SALTED)  = 3,
+
+  FOOTER
+} ptpgp_s2k_algorithm_type_t;
+#undef H
+
 
 ptpgp_err_t
 ptpgp_algorithm_to_s(ptpgp_algorithm_type_t, 

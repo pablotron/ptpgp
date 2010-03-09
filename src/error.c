@@ -62,6 +62,10 @@ static char *errors[] = {
   "unknown algorithm",
   "output buffer too small",
 
+  /* s2k errors */
+  "S2K salt is NULL",
+  "output buffer too small",
+
   /* sentinel */
   NULL
 };

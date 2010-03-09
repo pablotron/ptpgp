@@ -17,6 +17,7 @@ extern "C" {
 #include <ptpgp/util.h>
 #include <ptpgp/tag.h>
 #include <ptpgp/algorithm.h>
+#include <ptpgp/s2k.h>
 #include <ptpgp/packet-header.h>
 #include <ptpgp/stream-parser.h>
 #include <ptpgp/armor-parser.h>

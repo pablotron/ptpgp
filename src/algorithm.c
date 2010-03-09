@@ -146,6 +146,22 @@ static ptpgp_algorithm_info_t algos[] = {{
 }, FOOTER, {
 #undef A
 
+/* s2k algorithms (rfc4880 3.7) */
+#define A(a) T(S2K), PTPGP_S2K_ALGORITHM_TYPE_##a
+  A(SIMPLE),                    R(MUST),      R(SHOULD_NOT),
+  "Simple",                     NULL,         NULL
+}, {
+  A(SALTED),                    R(MUST),      R(MUST),
+  "Salted",                     NULL,         NULL
+}, {
+  A(RESERVED),                  R(MUST_NOT),  R(MUST_NOT),
+  "Reserved",                   NULL,         NULL
+}, {
+  A(ITERATED_AND_SALTED),       R(MUST),      R(MUST),
+  "Iterated and Salted",        NULL,         NULL
+}, FOOTER, {
+#undef A
+
   /* sentinel */
   0, 0, 0, 0, 0, 0, 0
 }};
