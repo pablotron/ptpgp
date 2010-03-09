@@ -63,14 +63,14 @@ ptpgp_signature_subpacket_type_to_s(ptpgp_signature_subpacket_type_t t,
   l = strlen(s) + 1;
 
   /* check output buffer length */
-  if (dst_len < l)
+  if (l > dst_len)
     return PTPGP_ERR_SIGNATURE_SUBPACKET_TYPE_DEST_BUFFER_TO_SMALL;
 
   /* copy string */
   memcpy(dst, s, l);
 
   /* save length */
-  if (*out_len)
+  if (out_len)
     *out_len = l;
 
   /* return success */

@@ -50,6 +50,180 @@ file_close(FILE *fh) {
 }
 
 static ptpgp_packet_parser_t pp;
+static ptpgp_signature_subpacket_parser_t sspp;
+
+
+#define P "    signature_subpacket: "
+static ptpgp_err_t
+dump_signature_subpacket_cb(ptpgp_signature_subpacket_parser_t *p,
+                            ptpgp_signature_subpacket_parser_token_t t,
+                            u8 *data, size_t data_len) {
+  char buf[1024], errbuf[1024];
+  ptpgp_err_t err;
+
+  UNUSED(p);
+
+  switch (t) {
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_SIGNATURE_CREATION_TIME:
+    printf(P "signature_creation_time: %d\n", *((uint32_t*) data));
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_ISSUER:
+    /* convert key id to hex */
+    memset(buf, 0, sizeof(buf));
+    err = ptpgp_to_hex(data, data_len, (u8*) buf, sizeof(buf));
+
+    /* check for error */
+    if (err != PTPGP_OK) {
+      /* get ptpgp error */
+      ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
+
+      /* print error */
+      fprintf(
+        stderr,
+        "[FATAL] Couldn't convert issuer key id to hex: %s (#%d)\n",
+        errbuf, err
+      );
+
+      /* exit with error */
+      exit(EXIT_FAILURE);
+    }
+
+    printf(P "issuer: 0x%s\n", buf);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_KEY_EXPIRATION_TIME:
+    printf(P "key_expiration_time: %d\n", *((uint32_t*) data));
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_PREFERRED_SYMMETRIC_ALGORITHM:
+    printf(P "preferred_symmetric_algorithm: %d\n", *data);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_PREFERRED_HASH_ALGORITHM:
+    printf(P "preferred_hash_algorithm: %d\n", *data);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_PREFERRED_COMPRESSION_ALGORITHM:
+    printf(P "preferred_compression_algorithm: %d\n", *data);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_SIGNATURE_EXPIRATION_TIME:
+    printf(P "signature_expiration_time: %d\n", *((uint32_t*) data));
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_EXPORTABLE_CERTIFICATION:
+    printf(P "exportable_certification: %s\n", *data ? "yes" : "no");
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_REVOCABLE:
+    printf(P "revocable: %s\n", *data ? "yes" : "no");
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_TRUST_LEVEL:
+    printf(P "trust_level: %d\n", *data);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_TRUST_AMOUNT:
+    printf(P "trust_amount: %d\n", *data);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_REGULAR_EXPRESSION_FRAGMENT:
+    memset(buf, 0, sizeof(buf));
+    memcpy(buf, data, data_len);
+    printf(P "regex_fragment: %s\n", buf);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_REVOCATION_KEY_CLASS:
+    printf(P "revocation_key_class: %d\n", *data);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_REVOCATION_PUBLIC_KEY_ALGORITHM:
+    printf(P "revocation_public_key_algorithm: %d\n", *data);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_REVOCATION_FINGERPRINT:
+    memset(buf, 0, sizeof(buf));
+    memcpy(buf, data, data_len);
+    printf(P "revocation_fingerprint_fragment: %s\n", buf);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_NOTATION_DATA_FLAGS:
+    printf(P "notation_data_flags: %d\n", *((uint32_t*) data));
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_KEY_SERVER_PREFERENCE:
+    memset(buf, 0, sizeof(buf));
+    memcpy(buf, data, data_len);
+    printf(P "key_server_preference_fragment: %s\n", buf);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_PREFERRED_KEY_SERVER:
+    memset(buf, 0, sizeof(buf));
+    memcpy(buf, data, data_len);
+    printf(P "preferred_key_server_fragment: %s\n", buf);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_PRIMARY_USER_ID:
+    printf(P "primary_user_id: %s\n", *data ? "yes" : "no");
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_POLICY_URI:
+    memset(buf, 0, sizeof(buf));
+    memcpy(buf, data, data_len);
+    printf(P "policy_uri_fragment: %s\n", buf);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_KEY_FLAG:
+    printf(P "key_flag: %d\n", *data);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_SIGNERS_USER_ID:
+    memset(buf, 0, sizeof(buf));
+    memcpy(buf, data, data_len);
+    printf(P "signers_user_id_fragment: %s\n", buf);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_REVOCATION_CODE:
+    printf(P "revocation_code: %d\n", *data);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_FEATURE:
+    printf(P "feature: %d\n", *data);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_SIGNATURE_TARGET_PUBLIC_KEY_ALGORITHM:
+    printf(P "signature_target_public_key_algorithm: %d\n", *data);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_SIGNATURE_TARGET_HASH_ALGORITHM:
+    printf(P "signature_target_hash_algorithm: %d\n", *data);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_EMBEDDED_SIGNATURE:
+    printf(P "embedded_signature_fragment: %d bytes\n", (int) data_len);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_NOTATION_DATA_NAME:
+    memset(buf, 0, sizeof(buf));
+    memcpy(buf, data, data_len);
+    printf(P "notation_data_name_fragment: %s\n", buf);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_NOTATION_DATA_VALUE:
+    memset(buf, 0, sizeof(buf));
+    memcpy(buf, data, data_len);
+    printf(P "notation_data_value_fragment: %s\n", buf);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_REVOCATION_REASON:
+    memset(buf, 0, sizeof(buf));
+    memcpy(buf, data, data_len);
+    printf(P "revocation_reason_fragment: %s\n", buf);
+    break;
+  case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_SIGNATURE_TARGET_HASH_DATA:
+    /* convert hash data fragment to hex */
+    memset(buf, 0, sizeof(buf));
+    err = ptpgp_to_hex(data, data_len, (u8*) buf, sizeof(buf));
+
+    /* check for error */
+    if (err != PTPGP_OK) {
+      /* get ptpgp error */
+      ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
+
+      /* print error */
+      fprintf(
+        stderr,
+        "[FATAL] Couldn't convert hash data fragment to hex: %s (#%d)\n",
+        errbuf, err
+      );
+
+      /* exit with error */
+      exit(EXIT_FAILURE);
+    }
+
+    printf(P "hash_data_fragment: %s\n", buf);
+    break;
+  default:
+    /* ignore unknown token types */
+    return PTPGP_OK;
+  }
+
+  /* return success */
+  return PTPGP_OK;
+}
+#undef P
 
 static ptpgp_err_t
 dump_packet_cb(ptpgp_packet_parser_t *p,
@@ -57,13 +231,11 @@ dump_packet_cb(ptpgp_packet_parser_t *p,
                ptpgp_packet_t *packet,
                u8 *data, size_t data_len) {
   u8 key_id[20];
-  char errbuf[1024];
+  char buf[1024], errbuf[1024];
   ptpgp_err_t err;
   ptpgp_signature_subpacket_header_t *subpacket_header;
 
   UNUSED(p);
-  UNUSED(data);
-  UNUSED(data_len);
 
   switch (packet->tag) {
   case PTPGP_TAG_PUBLIC_KEY_ENCRYPTED_SESSION_KEY:
@@ -163,12 +335,100 @@ dump_packet_cb(ptpgp_packet_parser_t *p,
       /* get subpacket header */
       subpacket_header = (ptpgp_signature_subpacket_header_t*) data;
 
+      /* get signature subpacket type */
+      err = ptpgp_signature_subpacket_type_to_s(
+        subpacket_header->type,
+        buf, sizeof(buf), NULL
+      );
+
+      /* check for error */
+      if (err != PTPGP_OK) {
+        /* get ptpgp error */
+        ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
+
+        /* print error */
+        fprintf(
+          stderr,
+          "[FATAL] Couldn't get signature subpacket type name: %s (#%d)\n",
+          errbuf, err
+        );
+
+        /* exit with error */
+        exit(EXIT_FAILURE);
+      }
+
       /* dump subpacket information */
       printf(
-        "  subpacket: type = %d, size = %d\n",
+        "  subpacket%s: type = %s (#%d), size = %d\n",
+        (subpacket_header->critical) ? " (CRITICAL)" : "",
+        buf,
         subpacket_header->type,
-        subpacket_header->size
+        (int) subpacket_header->size
       );
+
+      /* init signature subpacket parser */
+      err = ptpgp_signature_subpacket_parser_init(
+        &sspp,
+        subpacket_header->type,
+        dump_signature_subpacket_cb,
+        NULL
+      );
+
+      /* check for error */
+      if (err != PTPGP_OK) {
+        /* get ptpgp error */
+        ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
+
+        /* print error */
+        fprintf(
+          stderr,
+          "[FATAL] Couldn't init signature subpacket parser: %s (#%d)\n",
+          errbuf, err
+        );
+
+        /* exit with error */
+        exit(EXIT_FAILURE);
+      }
+
+      break;
+    case PTPGP_PACKET_PARSER_TOKEN_SIGNATURE_SUBPACKET_BODY:
+      err = ptpgp_signature_subpacket_parser_push(&sspp, data, data_len);
+
+      /* check for error */
+      if (err != PTPGP_OK) {
+        /* get ptpgp error */
+        ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
+
+        /* print error */
+        fprintf(
+          stderr,
+          "[FATAL] Couldn't push data to signature subpacket parser: %s (#%d)\n",
+          errbuf, err
+        );
+
+        /* exit with error */
+        exit(EXIT_FAILURE);
+      }
+
+      break;
+    case PTPGP_PACKET_PARSER_TOKEN_SIGNATURE_SUBPACKET_END:
+      err = ptpgp_signature_subpacket_parser_done(&sspp);
+
+      /* check for error */
+      if (err != PTPGP_OK) {
+        /* get ptpgp error */
+        ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
+
+        /* print error */
+        fprintf(
+          stderr,
+          "[FATAL] Couldn't finish signature subpacket parser: %s (#%d)\n",
+          errbuf, err
+        );
+
+        /* exit with error */
+        exit(EXIT_FAILURE);
+      }
 
       break;
     default: 

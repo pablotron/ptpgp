@@ -51,6 +51,11 @@ typedef enum {
   /* signature subpacket type errors */
   PTPGP_ERR_SIGNATURE_SUBPACKET_TYPE_DEST_BUFFER_TO_SMALL, /* destination buffer too small for subpacket description */
 
+  /* signature subpacket parser errors */
+  PTPGP_ERR_SIGNATURE_SUBPACKET_PARSER_INVALID_STATE, /* invalid subpacket parser state (bug?) */
+  PTPGP_ERR_SIGNATURE_SUBPACKET_PARSER_ALREADY_DONE, /* signature subpacket parser already done */
+  PTPGP_ERR_SIGNATURE_SUBPACKET_PARSER_INPUT_BUFFER_OVERFLOW, /* input buffer overflow (bug?) */
+
   /* sentinel */
   PTPGP_ERR_LAST
 } ptpgp_err_t;
