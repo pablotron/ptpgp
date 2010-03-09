@@ -7,7 +7,7 @@ typedef struct {
   uint32_t count;
 } ptpgp_s2k_t;
 
-#define PTPGP_S2K_COUNT_DECODE(v) (               \
+#define PTPGP_S2K_COUNT_DECODE(c) (               \
   ((uint32_t) (16 + (c & 15))) << ((c >> 4) + 6)  \
 )
 

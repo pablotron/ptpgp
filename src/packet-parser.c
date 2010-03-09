@@ -82,7 +82,7 @@ ptpgp_packet_parser_init(ptpgp_packet_parser_t *p,
 }
 
 ptpgp_err_t
-ptpgp_packet_parser_push(ptpgp_packet_parser_t *p, 
+ptpgp_packet_parser_push(ptpgp_packet_parser_t *p,
                          u8 *src,
                          size_t src_len) {
   size_t i;
@@ -215,7 +215,7 @@ retry:
               DIE(p, BAD_HASHED_MATERIAL_LENGTH);
 
             pp->versions.v3.signature_type = p->buf[2];
-            pp->versions.v3.creation_time = 
+            pp->versions.v3.creation_time =
               (p->buf[3] << 24) |
               (p->buf[4] << 16) |
               (p->buf[5] <<  8) |
@@ -224,7 +224,7 @@ retry:
             memcpy(pp->versions.v3.signer_key_id, p->buf + 7, 8);
             pp->versions.v3.public_key_algorithm = p->buf[15];
             pp->versions.v3.hash_algorithm = p->buf[16];
-            memcpy(pp->versions.v3.left16, p->buf + 17, 2); 
+            memcpy(pp->versions.v3.left16, p->buf + 17, 2);
 
             /* send packet header */
             SEND(p, PACKET_START, 0, 0);
@@ -331,7 +331,7 @@ retry:
             sp_type = p->buf[1];
 
             SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
-            
+
             p->state = STATE(SIGNATURE_SUBPACKET_HASHED);
             SHIFT(i);
             goto retry;
@@ -340,19 +340,19 @@ retry:
             sp_type = p->buf[2];
 
             SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
-            
+
             p->state = STATE(SIGNATURE_SUBPACKET_HASHED);
             SHIFT(i);
             goto retry;
           } else if (p->buf_len == 6 && p->buf[0] == 255) {
-            sp_size = (p->buf[1] << 24) | 
-                      (p->buf[2] << 16) | 
-                      (p->buf[3] <<  8) | 
+            sp_size = (p->buf[1] << 24) |
+                      (p->buf[2] << 16) |
+                      (p->buf[3] <<  8) |
                       (p->buf[4]);
             sp_type = p->buf[5];
 
             SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
-            
+
             p->state = STATE(SIGNATURE_SUBPACKET_HASHED);
             SHIFT(i);
             goto retry;
@@ -420,7 +420,7 @@ retry:
             sp_type = p->buf[1];
 
             SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
-            
+
             p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED);
             SHIFT(i);
             goto retry;
@@ -429,19 +429,19 @@ retry:
             sp_type = p->buf[2];
 
             SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
-            
+
             p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED);
             SHIFT(i);
             goto retry;
           } else if (p->buf_len == 6 && p->buf[0] == 255) {
-            sp_size = (p->buf[1] << 24) | 
-                      (p->buf[2] << 16) | 
-                      (p->buf[3] <<  8) | 
+            sp_size = (p->buf[1] << 24) |
+                      (p->buf[2] << 16) |
+                      (p->buf[3] <<  8) |
                       (p->buf[4]);
             sp_type = p->buf[5];
 
             SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
-            
+
             p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED);
             SHIFT(i);
             goto retry;
@@ -490,6 +490,89 @@ retry:
       }
 
       break;
+
+    /* symmetric-key encrypted session key packet (t3, rfc4880 5.3) */
+    case PTPGP_TAG_SYMMETRIC_KEY_ENCRYPTED_SESSION_KEY:
+      switch (p->state) {
+      case STATE(INIT):
+        for (i = 0; i < src_len; i++) {
+          p->buf[p->buf_len++] = src[i];
+
+          /* verify version number of packet */
+          if (p->buf[0] != 4) {
+            D("bad symmetric-key encrypted sesion key packet version = %d", p->buf[0]);
+            DIE(p, BAD_PACKET_VERSION);
+          }
+
+          if (p->buf_len == 2) {
+            /* populate algorithm and version */
+            p->packet.packet.t3.version   = p->buf[0];
+            p->packet.packet.t3.algorithm = p->buf[1];
+          } else if (
+            (p->buf_len == 4 &&
+             p->buf[2] == PTPGP_S2K_ALGORITHM_TYPE_SIMPLE) ||
+            (p->buf_len == 12 &&
+             p->buf[2] == PTPGP_S2K_ALGORITHM_TYPE_SALTED) ||
+            (p->buf_len == 13 &&
+             p->buf[2] == PTPGP_S2K_ALGORITHM_TYPE_ITERATED_AND_SALTED)
+          ) {
+            ptpgp_err_t err;
+
+            switch (p->buf[2]) {
+            case PTPGP_S2K_ALGORITHM_TYPE_SIMPLE:
+              err = ptpgp_s2k_init(
+                &(p->packet.packet.t3.s2k),
+                p->buf[2], p->buf[3], 0, 0
+              );
+
+              break;
+            case PTPGP_S2K_ALGORITHM_TYPE_SALTED:
+              err = ptpgp_s2k_init(
+                &(p->packet.packet.t3.s2k),
+                p->buf[2], p->buf[3], p->buf + 4, 0
+              );
+
+              break;
+            case PTPGP_S2K_ALGORITHM_TYPE_ITERATED_AND_SALTED:
+              err = ptpgp_s2k_init(
+                &(p->packet.packet.t3.s2k),
+                p->buf[2], p->buf[3], p->buf + 4,
+                PTPGP_S2K_COUNT_DECODE(p->buf[12])
+              );
+
+              break;
+            default:
+              /* never reached */
+              DIE(p, BAD_S2K_TYPE);
+            }
+
+            if (err != PTPGP_OK) {
+              D("s2k init failed: %d", err);
+              return p->last_err = err;
+            }
+
+            SEND(p, SYMMETRIC_KEY_ENCRYPTED_SESSION_KEY, 0, 0);
+
+            p->state = STATE(KEY_DATA);
+            SHIFT(i);
+            goto retry;
+          } else if (p->buf_len > 13) {
+            D("bad s2k type: %d", p->buf[2]);
+            DIE(p, BAD_S2K_TYPE);
+          }
+        }
+
+        break;
+      case STATE(KEY_DATA):
+        SEND(p, KEY_DATA, src, src_len);
+        return PTPGP_OK;
+
+        break;
+      default:
+        /* never reached */
+        DIE(p, INVALID_STATE);
+      }
+
     default:
       W("unimplemented tag: %d", p->packet.tag);
     }

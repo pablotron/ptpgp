@@ -45,6 +45,7 @@ static char *errors[] = {
   "bad packet version",
   "bad hashed material length",
   "invalid subpacket header",
+  "invalid S2K type",
 
   /* signature type errors */
   "unknown signature type",
@@ -64,6 +65,10 @@ static char *errors[] = {
 
   /* s2k errors */
   "S2K salt is NULL",
+  "output buffer too small",
+
+  /* key flag errors */
+  "unknown key flag",
   "output buffer too small",
 
   /* sentinel */

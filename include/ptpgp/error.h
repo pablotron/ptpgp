@@ -43,6 +43,7 @@ typedef enum {
   PTPGP_ERR_PACKET_PARSER_BAD_PACKET_VERSION, /* bad packet version */
   PTPGP_ERR_PACKET_PARSER_BAD_HASHED_MATERIAL_LENGTH, /* bad hashed material length */
   PTPGP_ERR_PACKET_PARSER_INVALID_SUBPACKET_HEADER, /* invalid subpacket header */
+  PTPGP_ERR_PACKET_PARSER_BAD_S2K_TYPE, /* invalid S2K type */
 
   /* signature type errors */
   PTPGP_ERR_SIGNATURE_TYPE_UNKNOWN_TYPE, /* unknown signature type */
@@ -63,6 +64,10 @@ typedef enum {
   /* s2k errors */
   PTPGP_ERR_S2K_MISSING_SALT, /* S2K salt is NULL */
   PTPGP_ERR_S2K_DEST_BUFFER_TOO_SMALL, /* output buffer too small */
+
+  /* key flag errors */
+  PTPGP_ERR_KEY_FLAG_NOT_FOUND, /* unknown key flag */
+  PTPGP_ERR_KEY_FLAG_DEST_BUFFER_TOO_SMALL, /* output buffer too small */
 
   /* sentinel */
   PTPGP_ERR_LAST
