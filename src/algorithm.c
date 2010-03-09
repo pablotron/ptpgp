@@ -21,7 +21,7 @@
 static ptpgp_algorithm_info_t algos[] = {{
 /* public key algorithms (rfc4880 9.1) */
 #define A(a) T(PUBLIC_KEY), PTPGP_PUBLIC_KEY_ALGORITHM_TYPE_##a
-  A(RESERVED_0),                R(MUST_NOT),  R(MUST_NOT), 
+  A(RESERVED_0),                R(MUST_NOT),  R(MUST_NOT),
   "Reserved",                   NULL,         NULL
 }, {
   A(RSA),                       R(SHOULD),    R(SHOULD),
@@ -33,7 +33,7 @@ static ptpgp_algorithm_info_t algos[] = {{
   A(RSA_SIGN_ONLY),             R(MAY),       R(SHOULD_NOT),
   "RSA (Sign-Only)",            NULL,         NULL
 }, {
-  A(ELGAMEL_ENCRYPT_ONLY),      R(MUST),      R(MUST),  
+  A(ELGAMEL_ENCRYPT_ONLY),      R(MUST),      R(MUST),
   "Elgamal (Encrypt-Only)",     NULL,         NULL
 }, {
   A(DSA),                       R(MUST),      R(MUST),
@@ -151,8 +151,8 @@ static ptpgp_algorithm_info_t algos[] = {{
 }};
 
 ptpgp_err_t
-ptpgp_algorithm_info(ptpgp_algorithm_type_t t, 
-                     uint32_t a, 
+ptpgp_algorithm_info(ptpgp_algorithm_type_t t,
+                     uint32_t a,
                      ptpgp_algorithm_info_t **r) {
   size_t i;
 
@@ -163,17 +163,43 @@ ptpgp_algorithm_info(ptpgp_algorithm_type_t t,
   for (i = 0; algos[i].name; i++) {
     if (algos[i].type == t && algos[i].algorithm == a) {
       *r = algos + i;
+
+      /* return success */
       return PTPGP_OK;
     }
   }
 
-  /* return success */
+  /* return failure */
   return PTPGP_ERR_ALGORITHM_UNKNOWN;
 }
 
-
 ptpgp_err_t
-ptpgp_algorithm_to_s(ptpgp_algorithm_type_t, 
-                     uint32_t, u8 *,
-                     size_t,
-                     size_t *);
+ptpgp_algorithm_to_s(ptpgp_algorithm_type_t t,
+                     uint32_t a,
+                     u8 *dst,
+                     size_t dst_len,
+                     size_t *out_len) {
+  ptpgp_algorithm_info_t *info;
+  ptpgp_err_t err;
+  size_t l;
+
+  /* get algorithm info */
+  if ((err = ptpgp_algorithm_info(t, a, &info)) != PTPGP_OK)
+    return err;
+
+  /* get name length */
+  l = strlen(info->name) + 1;
+
+  /* check output buffer */
+  if (l > dst_len)
+    return PTPGP_ERR_ALGORITHM_DEST_BUFFER_TOO_SMALL;
+
+  /* copy string */
+  memcpy(dst, info->name, l);
+
+  if (out_len)
+    *out_len = l;
+
+  /* return success */
+  return PTPGP_OK;
+}

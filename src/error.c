@@ -60,6 +60,7 @@ static char *errors[] = {
 
   /* algorithm type errors */
   "unknown algorithm",
+  "output buffer too small",
 
   /* sentinel */
   NULL

@@ -58,6 +58,7 @@ typedef enum {
 
   /* algorithm type errors */
   PTPGP_ERR_ALGORITHM_UNKNOWN, /* unknown algorithm */
+  PTPGP_ERR_ALGORITHM_DEST_BUFFER_TOO_SMALL, /* output buffer too small */
 
   /* sentinel */
   PTPGP_ERR_LAST
