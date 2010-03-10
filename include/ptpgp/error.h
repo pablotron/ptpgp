@@ -71,6 +71,9 @@ typedef enum {
   PTPGP_ERR_KEY_FLAG_NOT_FOUND, /* unknown key flag */
   PTPGP_ERR_KEY_FLAG_DEST_BUFFER_TOO_SMALL, /* output buffer too small */
 
+  /* crc24 errors */
+  PTPGP_ERR_CRC24_ALREADY_DONE, /* crc24 context already done */
+
   /* sentinel */
   PTPGP_ERR_LAST
 } ptpgp_err_t;

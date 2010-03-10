@@ -26,6 +26,7 @@ extern "C" {
 #include <ptpgp/packet-header.h>
 #include <ptpgp/stream-parser.h>
 #include <ptpgp/armor-parser.h>
+#include <ptpgp/crc24.h>
 #include <ptpgp/base64.h>
 #include <ptpgp/signature-type.h>
 #include <ptpgp/packet.h>

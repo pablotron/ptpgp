@@ -73,6 +73,9 @@ static char *errors[] = {
   "unknown key flag",
   "output buffer too small",
 
+  /* crc24 errors */
+  "crc24 context already done",
+
   /* sentinel */
   NULL
 };
