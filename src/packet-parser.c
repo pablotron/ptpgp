@@ -598,13 +598,196 @@ retry:
           p->packet.packet.t4.nested                = p->buf[12];
 
           SEND(p, ONE_PASS_SIGNATURE, 0, 0);
+          SHIFT(i);
           return PTPGP_OK;
         }
       }
 
       break;
+
+    /* compressed data packet (t8, rfc4880 5.6) */
+    case PTPGP_TAG_COMPRESSED_DATA:
+      switch (p->state) {
+      case STATE(INIT):
+        for (i = 0; i < src_len; i++) {
+          p->buf[p->buf_len++] = src[i];
+
+          if (p->buf_len == 1) {
+            p->packet.packet.t8.compression_algorithm = p->buf[0];
+
+            /* send compressed data header */
+            SEND(p, COMPRESSED_DATA, 0, 0);
+
+            p->state = STATE(PACKET_DATA);
+            p->buf_len = 0;
+            SHIFT(i);
+            goto retry;
+          }
+        }
+
+        break;
+      case STATE(PACKET_DATA):
+        SEND(p, PACKET_DATA, src, src_len);
+        return PTPGP_OK;
+
+        break;
+      default:
+        /* never reached */
+        DIE(p, INVALID_STATE);
+      }
+
+      break;
+
+    /* symmetrically encrypted data packet (t9, rfc4880 5.7) */
+    case PTPGP_TAG_SYMMETRICALLY_ENCRYPTED_DATA:
+      SEND(p, PACKET_DATA, src, src_len);
+      return PTPGP_OK;
+
+      break;
+
+    /* marker packet (t10, rfc4880 5.8) */
+    case PTPGP_TAG_MARKER:
+      /* always ignore marker tags */
+      return PTPGP_OK;
+
+      break;
+
+    /* literal data packet (t11, rfc4880 5.9) */
+    case PTPGP_TAG_LITERAL_DATA:
+      switch (p->state) {
+      case STATE(INIT):
+        for (i = 0; i < src_len; i++) {
+          p->buf[p->buf_len++] = src[i];
+
+          /* XXX: fixme */
+          if (p->buf_len == 2) {
+            p->packet.packet.t11.format = p->buf[0];
+            p->packet.packet.t11.file_name_len = p->buf[1];
+
+            goto retry;
+          } else if (p->buf_len > 2) {
+            if (p->buf_len == (size_t) 2 + p->buf[1] + 4) {
+              /* decode date */
+              p->packet.packet.t11.date = (p->buf[2 + p->buf[1] + 0] << 24) |
+                                          (p->buf[2 + p->buf[1] + 1] << 16) |
+                                          (p->buf[2 + p->buf[1] + 2] <<  8) |
+                                          (p->buf[2 + p->buf[1] + 3]);
+              /* save file name */
+              p->packet.packet.t11.file_name = (p->buf[1]) ? p->buf + 1 : NULL;
+                
+              /* send literal data header */
+              SEND(p, LITERAL_DATA, 0, 0);
+
+              /* explicitly clear file name and length */
+              p->packet.packet.t11.file_name     = NULL;
+              p->packet.packet.t11.file_name_len = 0;
+
+              p->state = STATE(PACKET_DATA);
+              p->buf_len = 0;
+              SHIFT(i);
+              goto retry;
+            }
+          }
+        }
+
+        break;
+      case STATE(PACKET_DATA):
+        SEND(p, PACKET_DATA, src, src_len);
+        return PTPGP_OK;
+
+        break;
+      default:
+        /* never reached */
+        DIE(p, INVALID_STATE);
+      }
+
+      break;
+
+    /* trust packet (t12, rfc4880 5.10) */
+    case PTPGP_TAG_TRUST:
+      SEND(p, PACKET_DATA, src, src_len);
+      return PTPGP_OK;
+
+      break;
+
+    /* user id packet (t13, rfc4880 5.11) */
+    case PTPGP_TAG_USER_ID:
+      SEND(p, PACKET_DATA, src, src_len);
+      return PTPGP_OK;
+
+      break;
+
+    /* sym encrypted integrity protected data packet (t18, rfc4880 5.13) */
+    case PTPGP_TAG_SYM_ENCRYPTED_INTEGRITY_PROTECTED_DATA:
+      switch (p->state) {
+      case STATE(INIT):
+        p->packet.packet.t18.version = src[0];
+
+        SEND(p, SYM_ENCRYPTED_INTEGRITY_PROTECTED_DATA, 0, 0);
+
+        p->state = STATE(PACKET_DATA);
+        SHIFT(1);
+        goto retry;
+        
+        break;
+      case STATE(PACKET_DATA):
+        SEND(p, PACKET_DATA, src, src_len);
+        return PTPGP_OK;
+      default:
+        /* never reached */
+        DIE(p, INVALID_STATE);
+      }
+
+      break;
+
+    /* modification detection code packet (t19, rfc4880 5.14) */
+    case PTPGP_TAG_MODIFICATION_DETECTION_CODE:
+      switch (p->state) {
+      case STATE(INIT):
+        p->buf_len = 0;
+        p->state = STATE(PACKET_DATA);
+
+        /* fall-through */
+      case STATE(PACKET_DATA):
+        if (p->buf_len + src_len <= 20) {
+          memcpy(p->buf + p->buf_len, src, src_len);
+          p->buf_len += src_len;
+
+          if (p->buf_len + src_len == 20)
+            SEND(p, PACKET_DATA, p->buf, p->buf_len);
+
+          /* return success */
+          return PTPGP_OK;
+        } else {
+          DIE(p, BAD_MDC_SIZE);
+        }
+
+        break;
+      default:
+        /* never reached */
+        DIE(p, INVALID_STATE);
+      }
+
+      break;
     default:
-      W("unimplemented tag: %d", p->packet.tag);
+      /* pass the raw packet data for unsupported packets */
+      switch (p->state) {
+      case STATE(INIT):
+        /* warn about unsupported packet type */
+        W("unimplemented tag: %d", p->packet.tag);
+        p->state = STATE(PACKET_DATA);
+
+        /* fall-through */
+      case STATE(PACKET_DATA):
+        /* send raw packet data */
+        SEND(p, PACKET_DATA, src, src_len);
+        return PTPGP_OK;
+
+        break;
+      default:
+        /* never reached */
+        DIE(p, INVALID_STATE);
+      }
     }
   }
 

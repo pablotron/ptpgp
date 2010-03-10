@@ -51,6 +51,7 @@ typedef struct {
   } versions;
 } ptpgp_packet_signature_t;
 
+/* signature packet (tag 3, rfc4880 5.3) */
 typedef struct {
   u8                                    version;
   ptpgp_symmetric_key_algorithm_type_t  algorithm;
@@ -59,6 +60,7 @@ typedef struct {
   size_t                                key_len;
 } ptpgp_packet_symmetric_key_encrypted_session_key_t;
 
+/* signature packet (tag 4, rfc4880 5.4) */
 typedef struct {
   u8                                    version;
   ptpgp_signature_type_t                signature_type;
@@ -67,6 +69,39 @@ typedef struct {
   u8                                    key_id[8],
                                         nested;
 } ptpgp_packet_one_pass_signature_t;
+
+/* compressed data packet (tag 8, rfc4880 5.6) */
+typedef struct {
+  ptpgp_compression_algorithm_type_t    compression_algorithm;
+  u8                                   *data;
+  size_t                                data_len;
+} ptpgp_packet_compressed_data_t;
+
+/* symmetrically encrypted data packet (tag 9, rfc4880 5.7) */
+typedef struct {
+  u8                                   *data;
+  size_t                                data_len;
+} ptpgp_packet_symmetrically_encrypted_data_t;
+
+/* literal data packet (tag 11, rfc4880 5.9) */
+typedef struct {
+  u8                                    format;
+
+  u8                                   *file_name;
+  size_t                                file_name_len;
+
+  uint32_t                              date;
+
+  u8                                   *data;
+  size_t                                data_len;
+} ptpgp_packet_literal_data_t;
+
+/* sym encrypted integrity protected data packet (tag 18, rfc4880 5.13) */
+typedef struct {
+  u8                                    version,
+                                       *data;
+  size_t                                data_len;
+} ptpgp_packet_sym_encrypted_integrity_protected_data_t;
 
 typedef struct {
   ptpgp_tag_t tag;
@@ -78,10 +113,17 @@ typedef struct {
   ptpgp_tag_t tag;
 
   union {
-    ptpgp_packet_raw_t raw;
-    ptpgp_packet_public_key_encrypted_session_key_t     t1;
-    ptpgp_packet_signature_t                            t2;
-    ptpgp_packet_symmetric_key_encrypted_session_key_t  t3;
-    ptpgp_packet_one_pass_signature_t                   t4;
+    ptpgp_packet_raw_t                                    raw;
+    ptpgp_packet_public_key_encrypted_session_key_t       t1;
+    ptpgp_packet_signature_t                              t2;
+    ptpgp_packet_symmetric_key_encrypted_session_key_t    t3;
+    ptpgp_packet_one_pass_signature_t                     t4;
+
+    /* TODO: pk public/private packets/subpackets */
+
+    ptpgp_packet_compressed_data_t                        t8;
+    ptpgp_packet_symmetrically_encrypted_data_t           t9;
+    ptpgp_packet_literal_data_t                           t11;
+    ptpgp_packet_sym_encrypted_integrity_protected_data_t t18;
   } packet;
 } ptpgp_packet_t;

@@ -46,6 +46,7 @@ static char *errors[] = {
   "bad hashed material length",
   "invalid subpacket header",
   "invalid S2K type",
+  "invalid MDC size (corrupt integrity)",
 
   /* signature type errors */
   "unknown signature type",
