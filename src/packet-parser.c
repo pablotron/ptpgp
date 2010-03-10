@@ -395,8 +395,8 @@ retry:
             /* send unhashed list start */
             SEND(p, SIGNATURE_SUBPACKET_UNHASHED_LIST_START, 0, 0);
 
-            p->buf_len = 0;
             p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED_LIST);
+            p->buf_len = 0;
             SHIFT(i);
             goto retry;
           }
@@ -443,6 +443,7 @@ retry:
             SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
 
             p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED);
+            p->buf_len = 0;
             SHIFT(i);
             goto retry;
           } else if (p->buf_len > 6) {
@@ -478,6 +479,7 @@ retry:
             SEND(p, SIGNATURE_LEFT16, p->buf, 2);
 
             p->state = STATE(MPI_LIST);
+            p->buf_len = 0;
             SHIFT(i);
             goto retry;
           }
@@ -554,6 +556,7 @@ retry:
             SEND(p, SYMMETRIC_KEY_ENCRYPTED_SESSION_KEY, 0, 0);
 
             p->state = STATE(KEY_DATA);
+            p->buf_len = 0;
             SHIFT(i);
             goto retry;
           } else if (p->buf_len > 13) {
@@ -573,6 +576,33 @@ retry:
         DIE(p, INVALID_STATE);
       }
 
+      break;
+
+    /* one-pass signature packet (t4, rfc4880 5.4) */
+    case PTPGP_TAG_ONE_PASS_SIGNATURE:
+      for (i = 0; i < src_len; i++) {
+        p->buf[p->buf_len++] = src[i];
+
+        /* verify version number of packet */
+        if (p->buf[0] != 3) {
+          D("bad one pass signature packet version = %d", p->buf[0]);
+          DIE(p, BAD_PACKET_VERSION);
+        }
+
+        if (p->buf_len == 13) {
+          p->packet.packet.t4.version               = p->buf[0];
+          p->packet.packet.t4.signature_type        = p->buf[1];
+          p->packet.packet.t4.hash_algorithm        = p->buf[2];
+          p->packet.packet.t4.public_key_algorithm  = p->buf[3];
+          memcpy(p->packet.packet.t4.key_id, p->buf + 4, 8);
+          p->packet.packet.t4.nested                = p->buf[12];
+
+          SEND(p, ONE_PASS_SIGNATURE, 0, 0);
+          return PTPGP_OK;
+        }
+      }
+
+      break;
     default:
       W("unimplemented tag: %d", p->packet.tag);
     }
