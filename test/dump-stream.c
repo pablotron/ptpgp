@@ -276,6 +276,20 @@ dump_signature_subpacket_cb(ptpgp_signature_subpacket_parser_t *p,
 }
 #undef P
 
+#ifdef PTPGP_DEBUG
+#define DUMP_TAG(t, l) do {                 \
+  ptpgp_tag_to_s((t), buf, sizeof(buf), 0); \
+                                            \
+  fprintf(stderr,                           \
+    "[D] %s:%d:%s() tag = %s, l = %d\n",    \
+    __FILE__, __LINE__, __func__,           \
+    buf, (int) (l)                          \
+  );                                        \
+} while (0)
+#else
+#define DUMP_TAG(t, l)
+#endif /* PTPGP_DEBUG */
+
 static ptpgp_err_t
 dump_packet_cb(ptpgp_packet_parser_t *p,
                ptpgp_packet_parser_token_t t,
@@ -287,6 +301,8 @@ dump_packet_cb(ptpgp_packet_parser_t *p,
   ptpgp_signature_subpacket_header_t *subpacket_header;
 
   UNUSED(p);
+
+  DUMP_TAG(packet->tag, data_len);
 
   switch (packet->tag) {
   case PTPGP_TAG_PUBLIC_KEY_ENCRYPTED_SESSION_KEY:
@@ -518,6 +534,48 @@ dump_packet_cb(ptpgp_packet_parser_t *p,
 
     break;
   default:
+    /* dump any raw packet data for unhandled tags */
+    if (t == PTPGP_PACKET_PARSER_TOKEN_PACKET_DATA) {
+      size_t l;
+
+      do {
+        /* clear buffer */
+        memset(buf, 0, sizeof(buf));
+
+        /* get maximum chunk size */
+        l = (sizeof(buf) - 1) / 2;
+
+        /* get chunk size */
+        if (data_len < l)
+          l = data_len;
+
+        /* convert chunk to hex */
+        err = ptpgp_to_hex(data, l, (u8*) buf, sizeof(buf) - 1);
+
+        /* check for error */
+        if (err != PTPGP_OK) {
+          /* get ptpgp error */
+          ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
+
+          /* print error */
+          fprintf(
+            stderr,
+            "[FATAL] Couldn't convert packet data to hex: %s (#%d)\n",
+            errbuf, err
+          );
+
+          /* exit with error */
+          exit(EXIT_FAILURE);
+        }
+
+        printf("  packet_data: %s\n", buf);
+
+        /* shift data */
+        data += l;
+        data_len -= l;
+      } while (data_len > 0);
+    }
+
     /* ignore unknown tags */
     return PTPGP_OK;
   }
