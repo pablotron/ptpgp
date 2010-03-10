@@ -136,7 +136,7 @@ retry:
 
             p->buf_len = 0;
             p->state = STATE(NONE);
-            
+
             SHIFT(i);
             goto retry;
           }
@@ -206,7 +206,15 @@ retry:
             DECODE_AND_SEND(p, p->buf + 1, p->buf_len - 1);
             p->buf_len = 0;
           } else if (p->buf_len == 5 && p->buf[0] == '=') {
-          } else if (p->buf_len > 11 && 
+            /* send crc24 (still encoded) */
+            SEND(p, CRC24, p->buf + 1, 4);
+
+            /* clear buffer */
+            p->buf_len = 0;
+
+            SHIFT(i);
+            goto retry;
+          } else if (p->buf_len > 11 &&
                      !memcmp(p->buf, "-----", 5) &&
                      !memcmp(p->buf + p->buf_len - 5, "-----", 5)) {
             /* handle end envelope */
