@@ -33,6 +33,7 @@ static char *errors[] = {
 
   /* base64 errors */
   "base64 context already done",
+  "base64 output buffer too small",
 
   /* tag errors */
   "invalid tag ID",

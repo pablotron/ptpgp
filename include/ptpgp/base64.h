@@ -1,35 +1,53 @@
 #define PTPGP_BASE64_BUFFER_SIZE     1024
 
+#define PTPGP_BASE64_SPACE_NEEDED(l) (  \
+  (int) ((l) * 4.0 / 3 + 0.5) +         \
+  ((l) % 3) ? (3 - ((l) % 3)) : 0       \
+)
+
 typedef struct ptpgp_base64_t_ ptpgp_base64_t;
 
-typedef ptpgp_err_t (*ptpgp_base64_cb_t)(ptpgp_base64_t *, char *, size_t);
+typedef ptpgp_err_t (*ptpgp_base64_cb_t)(ptpgp_base64_t *, u8 *, size_t);
 
 struct ptpgp_base64_t_ {
   ptpgp_err_t last_err;
 
   uint32_t flags;
 
-  char src_buf[4];
+  u8 src_buf[4];
   size_t src_buf_len;
 
-  char out_buf[PTPGP_BASE64_BUFFER_SIZE];
+  u8 out_buf[PTPGP_BASE64_BUFFER_SIZE];
   size_t out_buf_len;
 
   ptpgp_base64_cb_t cb;
   void *user_data;
 };
 
-
 ptpgp_err_t
 ptpgp_base64_init(ptpgp_base64_t *p,
-                  char encode,
+                  bool encode,
                   ptpgp_base64_cb_t cb,
                   void *user_data);
 
 ptpgp_err_t
 ptpgp_base64_push(ptpgp_base64_t *p,
-                  char *src,
+                  u8 *src,
                   size_t src_len);
 
 ptpgp_err_t
 ptpgp_base64_done(ptpgp_base64_t *p);
+
+ptpgp_err_t
+ptpgp_base64_once(bool encode,
+                  u8 *src,
+                  size_t src_len,
+                  u8 *dst,
+                  size_t dst_len,
+                  size_t *out_len);
+
+#define ptpgp_base64_decode(s, sl, d, dl, o) \
+  ptpgp_base64_once(0, (s), (sl), (d), (dl), (o))
+
+#define ptpgp_base64_encode(s, sl, d, dl, o) \
+  ptpgp_base64_once(1, (s), (sl), (d), (dl), (o))

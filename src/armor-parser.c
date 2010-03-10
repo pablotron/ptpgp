@@ -1,5 +1,7 @@
 #include "internal.h"
 
+#define STATE(s) PTPGP_ARMOR_PARSER_STATE_##s
+
 #define DIE(p, err) do {                                    \
   return (p)->last_err = PTPGP_ERR_ARMOR_PARSER_##err;      \
 } while (0)
@@ -28,7 +30,7 @@ ptpgp_err_t
 ptpgp_armor_parser_init(ptpgp_armor_parser_t *p, ptpgp_armor_parser_cb_t cb, void *user_data) {
   memset(p, 0, sizeof(ptpgp_armor_parser_t));
 
-  p->state = PTPGP_ARMOR_PARSER_STATE_NONE;
+  p->state = STATE(NONE);
 
   p->cb = cb;
   p->user_data = user_data;
@@ -43,16 +45,16 @@ ptpgp_armor_parser_push(ptpgp_armor_parser_t *p, char *src, size_t src_len) {
   if (p->last_err)
     return p->last_err;
 
-  if (p->state == PTPGP_ARMOR_PARSER_STATE_DONE)
+  if (p->state == STATE(DONE))
     DIE(p, ALREADY_DONE);
 
   if (!src || !src_len) {
     /* if the parser isn in the middle of a message, then raise error */
-    if (p->state != PTPGP_ARMOR_PARSER_STATE_NONE)
+    if (p->state != STATE(NONE))
       DIE(p, INCOMPLETE_MESSAGE);
 
     /* mark parser as finished */
-    p->state = PTPGP_ARMOR_PARSER_STATE_DONE;
+    p->state = STATE(DONE);
     SEND(p, DONE, 0, 0);
 
     /* return success */
@@ -62,11 +64,11 @@ ptpgp_armor_parser_push(ptpgp_armor_parser_t *p, char *src, size_t src_len) {
 retry:
   if (src_len > 0) {
     switch (p->state) {
-    case PTPGP_ARMOR_PARSER_STATE_NONE:
+    case STATE(NONE):
       for (i = 0; i < src_len; i++) {
         if (src[i] == '\n') {
           p->buf_len = 0;
-          p->state = PTPGP_ARMOR_PARSER_STATE_LINE_START;
+          p->state = STATE(LINE_START);
 
           SHIFT(i);
           goto retry;
@@ -74,20 +76,20 @@ retry:
       }
 
       break;
-    case PTPGP_ARMOR_PARSER_STATE_LINE_START:
+    case STATE(LINE_START):
       for (i = 0; i < src_len; i++) {
         p->buf[p->buf_len++] = src[i];
 
         if (p->buf_len == 5) {
           if (!memcmp(p->buf, "-----", 5)) {
             p->buf_len = 0;
-            p->state = PTPGP_ARMOR_PARSER_STATE_MAYBE_ENVELOPE;
+            p->state = STATE(MAYBE_ENVELOPE);
 
             SHIFT(i);
             goto retry;
           } else {
             p->buf_len = 0;
-            p->state = PTPGP_ARMOR_PARSER_STATE_NONE;
+            p->state = STATE(NONE);
 
             SHIFT(i);
             goto retry;
@@ -96,14 +98,14 @@ retry:
       }
 
       break;
-    case PTPGP_ARMOR_PARSER_STATE_MAYBE_ENVELOPE:
+    case STATE(MAYBE_ENVELOPE):
       for (i = 0; i < src_len; i++) {
         p->buf[p->buf_len++] = src[i];
 
         /* ignore lines greater than 80 characters (not an AA header) */
         if (p->buf_len > 80) {
           p->buf_len = 0;
-          p->state = PTPGP_ARMOR_PARSER_STATE_NONE;
+          p->state = STATE(NONE);
 
           SHIFT(i);
           goto retry;
@@ -125,7 +127,7 @@ retry:
             SEND(p, START_ARMOR, p->buf, p->buf_len - 5);
 
             p->buf_len = 0;
-            p->state = PTPGP_ARMOR_PARSER_STATE_HEADERS;
+            p->state = STATE(HEADERS);
 
             SHIFT(i);
             goto retry;
@@ -133,7 +135,7 @@ retry:
             /* not an AA header line */
 
             p->buf_len = 0;
-            p->state = PTPGP_ARMOR_PARSER_STATE_NONE;
+            p->state = STATE(NONE);
             
             SHIFT(i);
             goto retry;
@@ -142,7 +144,7 @@ retry:
       }
 
       break;
-    case PTPGP_ARMOR_PARSER_STATE_HEADERS:
+    case STATE(HEADERS):
       for (i = 0; i < src_len; i++) {
         p->buf[p->buf_len++] = src[i];
 
@@ -161,7 +163,7 @@ retry:
           if (p->buf_len == 0) {
             /* end of headers */
             p->buf_len = 0;
-            p->state = PTPGP_ARMOR_PARSER_STATE_BODY;
+            p->state = STATE(BODY);
 
             SHIFT(i);
             goto retry;
@@ -184,7 +186,7 @@ retry:
       }
 
       break;
-    case PTPGP_ARMOR_PARSER_STATE_BODY:
+    case STATE(BODY):
       for (i = 0; i < src_len; i++) {
         p->buf[p->buf_len++] = src[i];
 
@@ -203,6 +205,7 @@ retry:
             /* flush buffer */
             DECODE_AND_SEND(p, p->buf + 1, p->buf_len - 1);
             p->buf_len = 0;
+          } else if (p->buf_len == 5 && p->buf[0] == '=') {
           } else if (p->buf_len > 11 && 
                      !memcmp(p->buf, "-----", 5) &&
                      !memcmp(p->buf + p->buf_len - 5, "-----", 5)) {
@@ -210,7 +213,7 @@ retry:
             SEND(p, END_ARMOR, p->buf + 5, p->buf_len - 10);
 
             p->buf_len = 0;
-            p->state = PTPGP_ARMOR_PARSER_STATE_NONE;
+            p->state = STATE(NONE);
 
             SHIFT(i);
             goto retry;

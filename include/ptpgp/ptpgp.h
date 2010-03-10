@@ -13,6 +13,10 @@ extern "C" {
 #define u8 unsigned char
 #endif /* u8 */
 
+#ifndef bool
+#define bool char
+#endif /* bool */
+
 #include <ptpgp/error.h>
 #include <ptpgp/util.h>
 #include <ptpgp/tag.h>

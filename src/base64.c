@@ -1,8 +1,8 @@
 #include "internal.h"
 
 static char *lut = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                   "abcdefghijklmnopqrstuvwxyz"
-                   "0123456789+/";
+                 "abcdefghijklmnopqrstuvwxyz"
+                 "0123456789+/";
 
 #define FLAG_ENCODE   (1 << 0)
 #define FLAG_DONE     (1 << 1)
@@ -29,8 +29,8 @@ static char *lut = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 } while (0)
 
 #define CONVERT(p) do {                                               \
-  char *s = (p)->src_buf;                                             \
-  int l = (p)->src_buf_len;                                           \
+  u8 *s = (p)->src_buf;                                               \
+  size_t l = (p)->src_buf_len;                                        \
                                                                       \
   if (FLAG_IS_SET((p), ENCODE)) {                                     \
     if (l == 3) {                                                     \
@@ -89,9 +89,9 @@ static char *lut = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
 ptpgp_err_t
-ptpgp_base64_init(ptpgp_base64_t *p, 
-               char encode, 
-               ptpgp_base64_cb_t cb, 
+ptpgp_base64_init(ptpgp_base64_t *p,
+               bool encode,
+               ptpgp_base64_cb_t cb,
                void *user_data) {
   memset(p, 0, sizeof(ptpgp_base64_t));
 
@@ -101,11 +101,12 @@ ptpgp_base64_init(ptpgp_base64_t *p,
   p->cb = cb;
   p->user_data = user_data;
 
+  /* return success */
   return PTPGP_OK;
 }
 
 ptpgp_err_t
-ptpgp_base64_push(ptpgp_base64_t *p, char *src, size_t src_len) {
+ptpgp_base64_push(ptpgp_base64_t *p, u8 *src, size_t src_len) {
   size_t i;
   int e = FLAG_IS_SET(p, ENCODE);
 
@@ -115,7 +116,7 @@ ptpgp_base64_push(ptpgp_base64_t *p, char *src, size_t src_len) {
   if (!src || !src_len) {
     if (FLAG_IS_SET(p, DONE))
       DIE(p, ALREADY_DONE);
-    
+
     /* encode/decode remaining chunk (if necessary) */
     if (p->src_buf_len > 0) {
       /* flush output buffer (if necessary) */
@@ -155,4 +156,57 @@ ptpgp_base64_push(ptpgp_base64_t *p, char *src, size_t src_len) {
 ptpgp_err_t
 ptpgp_base64_done(ptpgp_base64_t *p) {
   return ptpgp_base64_push(p, 0, 0);
+}
+
+typedef struct {
+  u8 *dst;
+  size_t ofs, dst_len;
+} once_data_t;
+
+static ptpgp_err_t
+once_cb(ptpgp_base64_t *b, u8 *src, size_t src_len) {
+  once_data_t *d = b->user_data;
+
+  /* sanity check (should never happen) */
+  if (d->ofs + src_len > d->dst_len)
+    return PTPGP_ERR_BASE64_DEST_BUFFER_TOO_SMALL;
+
+  /* copy data, increment offset */
+  memcpy(d->dst + d->ofs, src, src_len);
+  d->ofs += src_len;
+
+  /* return success */
+  return PTPGP_OK;
+}
+
+ptpgp_err_t
+ptpgp_base64_once(bool encode,
+                  u8 *src,
+                  size_t src_len,
+                  u8 *dst,
+                  size_t dst_len,
+                  size_t *out_len) {
+  once_data_t d;
+  ptpgp_base64_t b;
+
+  /* populate data handler */
+  d.ofs = 0;
+  d.dst = dst;
+  d.dst_len = dst_len;
+
+  /* make sure output buffer is large enough */
+  if ((encode && (dst_len < PTPGP_BASE64_SPACE_NEEDED(src_len))) ||
+      (!encode && (dst_len < (src_len * 3 / 4))))
+    return PTPGP_ERR_BASE64_DEST_BUFFER_TOO_SMALL;
+
+  TRY(ptpgp_base64_init(&b, encode, once_cb, &d));
+  TRY(ptpgp_base64_push(&b, src, src_len));
+  TRY(ptpgp_base64_done(&b));
+
+  /* save length (if requested) */
+  if (out_len)
+    *out_len = d.ofs;
+
+  /* return success */
+  return PTPGP_OK;
 }

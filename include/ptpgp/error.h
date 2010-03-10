@@ -31,6 +31,7 @@ typedef enum {
 
   /* base64 errors */
   PTPGP_ERR_BASE64_ALREADY_DONE, /* base64 context already done */
+  PTPGP_ERR_BASE64_DEST_BUFFER_TOO_SMALL, /* base64 output buffer too small */
 
   /* tag errors */
   PTPGP_ERR_TAG_INVALID, /* invalid tag ID */

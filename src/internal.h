@@ -15,3 +15,9 @@
   ((t) >= 17 && (t) <= 19) ||     \
   ((t) >= 60 && (t) <= 63)        \
 )
+
+#define TRY(f) do {               \
+  ptpgp_err_t try_err = (f);      \
+  if (try_err != PTPGP_OK)        \
+    return try_err;               \
+} while (0)
