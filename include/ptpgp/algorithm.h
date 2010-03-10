@@ -90,6 +90,11 @@ typedef enum {
   H(AES_256)                  = 9,
   H(TWOFISH)                  = 10,
 
+  /* rfc5581 */
+  H(CAMELLIA_128)             = 11,
+  H(CAMELLIA_192)             = 12,
+  H(CAMELLIA_256)             = 13,
+
   FOOTER
 } ptpgp_symmetric_key_algorithm_type_t;
 #undef H

@@ -88,6 +88,15 @@ static ptpgp_algorithm_info_t algos[] = {{
 }, {
   A(TWOFISH),                   R(MAY),       R(MAY),
   "Twofish (256-bit)",          NULL,         NULL
+}, {
+  A(CAMELLIA_128),              R(MAY),       R(MAY),
+  "Camellia (128-bit)",         NULL,         NULL
+}, {
+  A(CAMELLIA_192),              R(MAY),       R(MAY),
+  "Camellia (192-bit)",         NULL,         NULL
+}, {
+  A(CAMELLIA_256),              R(MAY),       R(MAY),
+  "Camellia (256-bit)",         NULL,         NULL
 }, FOOTER, {
 #undef A
 
