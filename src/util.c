@@ -1,6 +1,7 @@
 #include "internal.h"
 #include <stdarg.h>
 #include <stdlib.h>
+#include <errno.h>
 
 static char *lut = "0123456789abcdef";
 
@@ -19,6 +20,47 @@ ptpgp_err_t ptpgp_to_hex(u8 *src, size_t src_len, u8 *dst, size_t dst_len) {
 
   /* return success */
   return PTPGP_OK;
+}
+
+static void
+sys_carp(char *prefix, int saved_errno, char *msg) {
+  char *err_str = strerror(saved_errno);
+
+  /* make sure error string is defined */
+  if (!err_str)
+    err_str = "unknown error";
+
+  /* print error */
+  fprintf(stderr, "[%s] %s: %s\n", prefix, msg, err_str);
+}
+
+void
+ptpgp_sys_die(char *fmt, ...) {
+  va_list ap;
+  char buf[1024];
+  int saved_errno = errno;
+
+  /* build error message */
+  va_start(ap, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, ap);
+  va_end(ap);
+
+  sys_carp("FATAL", saved_errno, buf);
+  exit(EXIT_FAILURE);
+}
+
+void
+ptpgp_sys_warn(char *fmt, ...) {
+  va_list ap;
+  char buf[1024];
+  int saved_errno = errno;
+
+  /* build error message */
+  va_start(ap, fmt);
+  vsnprintf(buf, sizeof(buf), fmt, ap);
+  va_end(ap);
+
+  sys_carp("WARNING", saved_errno, buf);
 }
 
 static void
