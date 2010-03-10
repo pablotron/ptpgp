@@ -14,6 +14,9 @@
 
 #define H(a) PTPGP_ALGORITHM_TYPE_##a
 typedef enum {
+  /* algorithm types */
+  H(ALGORITHM_TYPE),
+
   /* public key algorithms (rfc4880 9.1) */
   H(PUBLIC_KEY),
 
