@@ -14,3 +14,4 @@ for i in *.c; do
 done
 
 cc -o ./dump-stream{,.o} ../src/*.o
+cc -o ./error{,.o} ../src/*.o

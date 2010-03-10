@@ -19,6 +19,27 @@
   F(PRIVATE_110)
 
 static ptpgp_algorithm_info_t algos[] = {{
+/* algorithm types */
+#define A(a) T(ALGORITHM_TYPE), PTPGP_ALGORITHM_TYPE_##a
+  A(ALGORITHM_TYPE),            R(MUST),      R(MUST),
+  "Algorithm Type",             NULL,         NULL
+}, {
+  A(PUBLIC_KEY),                R(MUST),      R(MUST),
+  "Public Key Algorithm",       NULL,         NULL
+}, {
+  A(SYMMETRIC_KEY),             R(MUST),      R(MUST),
+  "Symmetric Key Algorithm",    NULL,         NULL
+}, {
+  A(COMPRESSION),               R(MUST),      R(MUST),
+  "Compression Algorithm",      NULL,         NULL
+}, {
+  A(HASH),                      R(MUST),      R(MUST),
+  "Hash Algorithm",             NULL,         NULL
+}, {
+  A(S2K),                       R(MUST),      R(MUST),
+  "String-to-Key Specifier",    NULL,         NULL
+}, {
+#undef A
 /* public key algorithms (rfc4880 9.1) */
 #define A(a) T(PUBLIC_KEY), PTPGP_PUBLIC_KEY_ALGORITHM_TYPE_##a
   A(RESERVED_0),                R(MUST_NOT),  R(MUST_NOT),

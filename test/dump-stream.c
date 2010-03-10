@@ -14,7 +14,7 @@
 
 static void
 print_usage_and_exit(char *app) {
-  printf("%s - Decode and print PGP packet headers.\n", app);
+  printf("%s - Decode and print PGP packet stream.\n", app);
   exit(EXIT_SUCCESS);
 }
 
@@ -60,22 +60,21 @@ static char *algo_to_s(ptpgp_algorithm_type_t t,
 
   /* check for error */
   if (err != PTPGP_OK) {
-    char errbuf[1024];
+    char algo_buf[128];
 
-    /* get ptpgp error */
-    ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-    /* print error */
-    fprintf(
-      stderr,
-      "[FATAL] Couldn't get algorithm name for [%d, %d]: %s (#%d)\n",
-      t, a, errbuf, err
+    /* get algorithm type name */
+    PTPGP_ASSERT(
+      ptpgp_algorithm_to_s(0, t, (u8*) algo_buf, sizeof(algo_buf), NULL),
+      "get name of algorithm type %d", t
     );
 
-    /* exit with error */
-    exit(EXIT_FAILURE);
+    ptpgp_warn(err, "Unknown %s %d", algo_buf, a);
+
+    /* build unknown algorithm name */
+    snprintf(buf, buf_len, "Unknown Algorithm (%s: %d)", algo_buf, a);
   }
 
+  /* return result */
   return buf;
 }
 
@@ -85,8 +84,7 @@ static ptpgp_err_t
 dump_signature_subpacket_cb(ptpgp_signature_subpacket_parser_t *p,
                             ptpgp_signature_subpacket_parser_token_t t,
                             u8 *data, size_t data_len) {
-  char buf[1024], errbuf[1024];
-  ptpgp_err_t err;
+  char buf[1024];
 
   UNUSED(p);
 
@@ -97,23 +95,11 @@ dump_signature_subpacket_cb(ptpgp_signature_subpacket_parser_t *p,
   case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_ISSUER:
     /* convert key id to hex */
     memset(buf, 0, sizeof(buf));
-    err = ptpgp_to_hex(data, data_len, (u8*) buf, sizeof(buf));
 
-    /* check for error */
-    if (err != PTPGP_OK) {
-      /* get ptpgp error */
-      ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-      /* print error */
-      fprintf(
-        stderr,
-        "[FATAL] Couldn't convert issuer key id to hex: %s (#%d)\n",
-        errbuf, err
-      );
-
-      /* exit with error */
-      exit(EXIT_FAILURE);
-    }
+    PTPGP_ASSERT(
+      ptpgp_to_hex(data, data_len, (u8*) buf, sizeof(buf)),
+      "convert issuer key id to hex"
+    );
 
     printf(P "issuer: 0x%s\n", buf);
     break;
@@ -246,23 +232,11 @@ dump_signature_subpacket_cb(ptpgp_signature_subpacket_parser_t *p,
   case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_SIGNATURE_TARGET_HASH_DATA:
     /* convert hash data fragment to hex */
     memset(buf, 0, sizeof(buf));
-    err = ptpgp_to_hex(data, data_len, (u8*) buf, sizeof(buf));
 
-    /* check for error */
-    if (err != PTPGP_OK) {
-      /* get ptpgp error */
-      ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-      /* print error */
-      fprintf(
-        stderr,
-        "[FATAL] Couldn't convert hash data fragment to hex: %s (#%d)\n",
-        errbuf, err
-      );
-
-      /* exit with error */
-      exit(EXIT_FAILURE);
-    }
+    PTPGP_ASSERT(
+      ptpgp_to_hex(data, data_len, (u8*) buf, sizeof(buf)),
+      "convert hash data fragment to hex"
+    );
 
     printf(P "hash_data_fragment: %s\n", buf);
     break;
@@ -277,14 +251,16 @@ dump_signature_subpacket_cb(ptpgp_signature_subpacket_parser_t *p,
 #undef P
 
 #ifdef PTPGP_DEBUG
-#define DUMP_TAG(t, l) do {                 \
-  ptpgp_tag_to_s((t), buf, sizeof(buf), 0); \
-                                            \
-  fprintf(stderr,                           \
-    "[D] %s:%d:%s() tag = %s, l = %d\n",    \
-    __FILE__, __LINE__, __func__,           \
-    buf, (int) (l)                          \
-  );                                        \
+#define DUMP_TAG(t, l) do {                   \
+  if ((l) > 0) {                              \
+    ptpgp_tag_to_s((t), buf, sizeof(buf), 0); \
+                                              \
+    fprintf(stderr,                           \
+      "[D] %s:%d:%s() tag = %s, l = %d\n",    \
+      __FILE__, __LINE__, __func__,           \
+      buf, (int) (l)                          \
+    );                                        \
+  }                                           \
 } while (0)
 #else
 #define DUMP_TAG(t, l)
@@ -296,8 +272,7 @@ dump_packet_cb(ptpgp_packet_parser_t *p,
                ptpgp_packet_t *packet,
                u8 *data, size_t data_len) {
   u8 key_id[20];
-  char buf[1024], errbuf[1024];
-  ptpgp_err_t err;
+  char buf[1024];
   ptpgp_signature_subpacket_header_t *subpacket_header;
 
   UNUSED(p);
@@ -310,23 +285,11 @@ dump_packet_cb(ptpgp_packet_parser_t *p,
     case PTPGP_PACKET_PARSER_TOKEN_PACKET_START:
       /* convert key id to hex */
       memset(key_id, 0, sizeof(key_id));
-      err = ptpgp_to_hex(packet->packet.t1.key_id, 8, key_id, sizeof(key_id));
 
-      /* check for error */
-      if (err != PTPGP_OK) {
-        /* get ptpgp error */
-        ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-        /* print error */
-        fprintf(
-          stderr,
-          "[FATAL] Couldn't convert key id to hex: %s (#%d)\n",
-          errbuf, err
-        );
-
-        /* exit with error */
-        exit(EXIT_FAILURE);
-      }
+      PTPGP_ASSERT(
+        ptpgp_to_hex(packet->packet.t1.key_id, 8, key_id, sizeof(key_id)),
+        "convert key id to hex"
+      );
 
       /* dump packet contents */
       printf(
@@ -361,26 +324,15 @@ dump_packet_cb(ptpgp_packet_parser_t *p,
       case 3:
         /* convert key id to hex */
         memset(key_id, 0, sizeof(key_id));
-        err = ptpgp_to_hex(
-          packet->packet.t2.versions.v3.signer_key_id,
-          8, key_id, sizeof(key_id)
+
+        PTPGP_ASSERT(
+          ptpgp_to_hex(
+            packet->packet.t2.versions.v3.signer_key_id,
+            8, key_id, sizeof(key_id)
+          ),
+
+          "convert key id to hex"
         );
-
-        /* check for error */
-        if (err != PTPGP_OK) {
-          /* get ptpgp error */
-          ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-          /* print error */
-          fprintf(
-            stderr,
-            "[FATAL] Couldn't convert key id to hex: %s (#%d)\n",
-            errbuf, err
-          );
-
-          /* exit with error */
-          exit(EXIT_FAILURE);
-        }
 
         do {
           char hash_buf[256];
@@ -432,26 +384,14 @@ dump_packet_cb(ptpgp_packet_parser_t *p,
       subpacket_header = (ptpgp_signature_subpacket_header_t*) data;
 
       /* get signature subpacket type */
-      err = ptpgp_signature_subpacket_type_to_s(
-        subpacket_header->type,
-        buf, sizeof(buf), NULL
+      PTPGP_ASSERT(
+        ptpgp_signature_subpacket_type_to_s(
+          subpacket_header->type,
+          buf, sizeof(buf), NULL
+        ),
+
+        "get signature subpacket type name"
       );
-
-      /* check for error */
-      if (err != PTPGP_OK) {
-        /* get ptpgp error */
-        ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-        /* print error */
-        fprintf(
-          stderr,
-          "[FATAL] Couldn't get signature subpacket type name: %s (#%d)\n",
-          errbuf, err
-        );
-
-        /* exit with error */
-        exit(EXIT_FAILURE);
-      }
 
       /* dump subpacket information */
       printf(
@@ -463,68 +403,30 @@ dump_packet_cb(ptpgp_packet_parser_t *p,
       );
 
       /* init signature subpacket parser */
-      err = ptpgp_signature_subpacket_parser_init(
-        &sspp,
-        subpacket_header->type,
-        dump_signature_subpacket_cb,
-        NULL
+      PTPGP_ASSERT(
+        ptpgp_signature_subpacket_parser_init(
+          &sspp,
+          subpacket_header->type,
+          dump_signature_subpacket_cb,
+          NULL
+        ),
+
+        "init signature subpacket parser"
       );
-
-      /* check for error */
-      if (err != PTPGP_OK) {
-        /* get ptpgp error */
-        ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-        /* print error */
-        fprintf(
-          stderr,
-          "[FATAL] Couldn't init signature subpacket parser: %s (#%d)\n",
-          errbuf, err
-        );
-
-        /* exit with error */
-        exit(EXIT_FAILURE);
-      }
 
       break;
     case PTPGP_PACKET_PARSER_TOKEN_SIGNATURE_SUBPACKET_BODY:
-      err = ptpgp_signature_subpacket_parser_push(&sspp, data, data_len);
-
-      /* check for error */
-      if (err != PTPGP_OK) {
-        /* get ptpgp error */
-        ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-        /* print error */
-        fprintf(
-          stderr,
-          "[FATAL] Couldn't push data to signature subpacket parser: %s (#%d)\n",
-          errbuf, err
-        );
-
-        /* exit with error */
-        exit(EXIT_FAILURE);
-      }
+      PTPGP_ASSERT(
+        ptpgp_signature_subpacket_parser_push(&sspp, data, data_len),
+        "push data to signature subpacket parser"
+      );
 
       break;
     case PTPGP_PACKET_PARSER_TOKEN_SIGNATURE_SUBPACKET_END:
-      err = ptpgp_signature_subpacket_parser_done(&sspp);
-
-      /* check for error */
-      if (err != PTPGP_OK) {
-        /* get ptpgp error */
-        ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-        /* print error */
-        fprintf(
-          stderr,
-          "[FATAL] Couldn't finish signature subpacket parser: %s (#%d)\n",
-          errbuf, err
-        );
-
-        /* exit with error */
-        exit(EXIT_FAILURE);
-      }
+      PTPGP_ASSERT(
+        ptpgp_signature_subpacket_parser_done(&sspp),
+        "finish signature subpacket parser"
+      );
 
       break;
     default:
@@ -550,23 +452,10 @@ dump_packet_cb(ptpgp_packet_parser_t *p,
           l = data_len;
 
         /* convert chunk to hex */
-        err = ptpgp_to_hex(data, l, (u8*) buf, sizeof(buf) - 1);
-
-        /* check for error */
-        if (err != PTPGP_OK) {
-          /* get ptpgp error */
-          ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-          /* print error */
-          fprintf(
-            stderr,
-            "[FATAL] Couldn't convert packet data to hex: %s (#%d)\n",
-            errbuf, err
-          );
-
-          /* exit with error */
-          exit(EXIT_FAILURE);
-        }
+        PTPGP_ASSERT(
+          ptpgp_to_hex(data, l, (u8*) buf, sizeof(buf) - 1),
+          "convert packet data to hex"
+        );
 
         printf("  packet_data: %s\n", buf);
 
@@ -589,12 +478,9 @@ dump_stream_cb(ptpgp_stream_parser_t *p,
                ptpgp_stream_parser_token_t t,
                ptpgp_packet_header_t *header,
                u8 *data, size_t data_len) {
-  char buf[1024], errbuf[1024];
-  ptpgp_err_t err;
+  char buf[1024];
 
   UNUSED(p);
-  UNUSED(data);
-  UNUSED(data_len);
 
   switch (t) {
   case PTPGP_STREAM_PARSER_TOKEN_START:
@@ -603,85 +489,33 @@ dump_stream_cb(ptpgp_stream_parser_t *p,
       return PTPGP_OK;
 
     /* get name of content tag */
-    err = ptpgp_tag_to_s(header->content_tag, buf, sizeof(buf), NULL);
-
-    /* check for error */
-    if (err != PTPGP_OK) {
-      /* get ptpgp error */
-      ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-      /* print error */
-      fprintf(
-        stderr,
-        "[FATAL] Couldn't get tag name %d: %s (#%d)\n",
-        header->content_tag, errbuf, err
-      );
-
-      /* exit with error */
-      exit(EXIT_FAILURE);
-    }
+    PTPGP_ASSERT(
+      ptpgp_tag_to_s(header->content_tag, buf, sizeof(buf), NULL),
+      "get tag name %d", header->content_tag
+    );
 
     /* print packet type and length to standard output */
     printf("%s,%d,%d\n", buf, header->content_tag, (int) header->length);
 
     /* initialize packet parser */
-    err = ptpgp_packet_parser_init(&pp, header->content_tag, dump_packet_cb, NULL);
-
-    /* check for error */
-    if (err != PTPGP_OK) {
-      /* get ptpgp error */
-      ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-      /* print error */
-      fprintf(
-        stderr,
-        "[FATAL] Couldn't initialize packet parser for tag %d: %s (#%d)\n",
-        header->content_tag, errbuf, err
-      );
-
-      /* exit with error */
-      exit(EXIT_FAILURE);
-    }
+    PTPGP_ASSERT(
+      ptpgp_packet_parser_init(&pp, header->content_tag, dump_packet_cb, NULL),
+      "initialize packet parser for tag %d", header->content_tag
+    );
 
     break;
   case PTPGP_STREAM_PARSER_TOKEN_BODY:
-    err = ptpgp_packet_parser_push(&pp, data, data_len);
-
-    /* check for error */
-    if (err != PTPGP_OK) {
-      /* get ptpgp error */
-      ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-      /* print error */
-      fprintf(
-        stderr,
-        "[FATAL] Couldn't push data to packet parser: %s (#%d)\n",
-        errbuf, err
-      );
-
-      /* exit with error */
-      exit(EXIT_FAILURE);
-    }
+    PTPGP_ASSERT(
+      ptpgp_packet_parser_push(&pp, data, data_len),
+      "push data to packet parser"
+    );
 
     break;
   case PTPGP_STREAM_PARSER_TOKEN_END:
-    err = ptpgp_packet_parser_done(&pp);
-
-    /* check for error */
-    if (err != PTPGP_OK) {
-      /* get ptpgp error */
-      ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-      /* print error */
-      fprintf(
-        stderr,
-        "[FATAL] Couldn't finalize packet parser: %s (#%d)\n",
-        errbuf, err
-      );
-
-      /* exit with error */
-      exit(EXIT_FAILURE);
-    }
+    PTPGP_ASSERT(
+      ptpgp_packet_parser_done(&pp),
+      "finalize packet parser"
+    );
 
     break;
   default:
@@ -697,27 +531,14 @@ static void
 dump(char *path) {
   FILE *fh;
   int len;
-  unsigned char buf[1024];
-  char errbuf[1024];
-  ptpgp_err_t err;
+  u8 buf[1024];
   ptpgp_stream_parser_t p;
 
   /* init ptpgp stream parser */
-  err = ptpgp_stream_parser_init(&p, dump_stream_cb, path);
-  if (err != PTPGP_OK) {
-    /* get ptpgp error */
-    ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-    /* print error message */
-    fprintf(
-      stderr,
-      "[FATAL] Couldn't initialize stream parser for \"%s\": %s (#%d)\n",
-      path, errbuf, err
-    );
-
-    /* exit with error */
-    exit(EXIT_FAILURE);
-  }
+  PTPGP_ASSERT(
+    ptpgp_stream_parser_init(&p, dump_stream_cb, path),
+    "initialize stream parser for \"%s\"", path
+  );
 
   /* open input file */
   fh = file_open(path);
@@ -725,45 +546,20 @@ dump(char *path) {
   /* dump packets from file */
   while (!feof(fh) && (len = fread(buf, 1, sizeof(buf), fh)) > 0) {
     /* write file data to parser */
-    err = ptpgp_stream_parser_push(&p, buf, len);
-
-    /* handle error */
-    if (err != PTPGP_OK) {
-      /* get ptpgp error */
-      ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-      /* print error message */
-      fprintf(
-        stderr,
-        "[FATAL] Couldn't write data to parser: %s (#%d)\n",
-        errbuf, err
-      );
-
-      /* exit with error */
-      exit(EXIT_FAILURE);
-    }
+    PTPGP_ASSERT(
+      ptpgp_stream_parser_push(&p, buf, len),
+      "write data to parser"
+    );
   }
 
   /* close input file */
   file_close(fh);
 
   /* finish parser */
-  err = ptpgp_stream_parser_done(&p);
-
-  /* handle error */
-  if (err != PTPGP_OK) {
-    /* get ptpgp error */
-    ptpgp_strerror(err, errbuf, sizeof(errbuf), NULL);
-
-    fprintf(
-      stderr,
-      "[FATAL] Couldn't close stream parser: %s (#%d)\n",
-      errbuf, err
-    );
-
-    /* exit with error */
-    exit(EXIT_FAILURE);
-  }
+  PTPGP_ASSERT(
+    ptpgp_stream_parser_done(&p),
+    "close stream parser"
+  );
 }
 
 int main(int argc, char *argv[]) {
