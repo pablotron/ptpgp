@@ -1,12 +1,14 @@
-#define _BSD_SOURCE
-#define _POSIX_SOURCE
+#define _BSD_SOURCE     /* for madvise() */
+#define _POSIX_SOURCE   /* for fileno() */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
+#include <sys/types.h>  /* for fstat() */
+#include <sys/stat.h>   /* for fstat() */
+#include <sys/mman.h>   /* for mmap() */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+
 #include "test-common.h"
 
 void
@@ -82,8 +84,8 @@ file_unmap(file_map_t *r) {
     ptpgp_sys_warn("munmap() failed:");
 }
 
-void file_read(char *path, 
-               void (*cb)(u8 *, size_t, void *), 
+void file_read(char *path,
+               void (*cb)(u8 *, size_t, void *),
                void *user_data) {
   FILE *fh;
   size_t len = 0;
