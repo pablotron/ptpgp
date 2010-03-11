@@ -61,7 +61,7 @@ int main(int argc, char *argv[]) {
     print_usage_and_exit(argv[0], USAGE);
     
   /* check for help argument */
-  for (i = 0; (int) i < argc; i++)
+  for (i = 1; (int) i < argc; i++)
     if (IS_HELP(argv[i]))
       print_usage_and_exit(argv[0], USAGE);
 

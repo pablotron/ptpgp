@@ -8,7 +8,8 @@ typedef ptpgp_err_t (*ptpgp_base64_cb_t)(ptpgp_base64_t *, u8 *, size_t);
 struct ptpgp_base64_t_ {
   ptpgp_err_t last_err;
 
-  uint32_t flags;
+  uint32_t flags, 
+           line_len;
 
   u8 src_buf[PTPGP_BASE64_SRC_BUF_SIZE];
   size_t src_buf_len;

@@ -24,8 +24,13 @@
 #define PUSH(p, c) do {                                               \
   /* D("pushing character"); */                                       \
   (p)->out_buf[(p)->out_buf_len++] = (c);                             \
-  if ((p)->out_buf_len == PTPGP_BASE64_OUT_BUF_SIZE - 2)              \
+  if ((p)->out_buf_len >= PTPGP_BASE64_OUT_BUF_SIZE - 2)              \
     FLUSH(p);                                                         \
+                                                                      \
+  if (FLAG_IS_SET(p, ENCODE) && (p)->line_len++ > 59) {               \
+    (p)->out_buf[(p)->out_buf_len++] = '\n';                          \
+    (p)->line_len = 0;                                                \
+  }                                                                   \
 } while (0)
 
 #define VALID_BASE64_CHAR(c) (                                        \
@@ -39,7 +44,25 @@ static char *lut = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                    "abcdefghijklmnopqrstuvwxyz"
                    "0123456789+/";
 
-#define MASK(n) ((1 << n) - 1)
+static u8
+decode(u8 c) {
+  if (c >= 'A' && c <= 'Z')
+    return c - 'A';
+  if (c >= 'a' && c <= 'z')
+    return c - 'a' + 26;
+  if (c >= '0' && c <= '9')
+    return c - '0' + 52;
+  if (c == '+')
+    return 62;
+  if (c == '/')
+    return 63;
+
+  /* never reached */
+  return 0xFF;
+}
+
+#define BITS(n) ((1 << n) - 1)
+
 static ptpgp_err_t
 convert(ptpgp_base64_t *p) {
   u8    *s = p->src_buf;
@@ -67,35 +90,43 @@ convert(ptpgp_base64_t *p) {
       PUSH(p, '=');
     }
   } else {
-    int a, b, c, d;
+    uint32_t a, b, c, d;
 
     /* valid base64 input should always be a multiple of 4 */
     if (l != 4)
       return PTPGP_ERR_BASE64_CORRUPT_INPUT;
 
-    if (s[2] != '=' && s[3] != '=') {
-      a = strchr(lut, s[0]) - lut;
-      b = strchr(lut, s[1]) - lut;
-      c = strchr(lut, s[2]) - lut;
-      d = strchr(lut, s[3]) - lut;
+    /* strip trailing markers */
+    while (s[l - 1] == '=')
+      l--;
+
+    if (l < 2 || s[0] == '=' || s[1] == '=')
+      return PTPGP_ERR_BASE64_CORRUPT_INPUT;
+
+    if (l == 4) {
+      a = decode(s[0]);
+      b = decode(s[1]);
+      c = decode(s[2]);
+      d = decode(s[3]);
 
       PUSH(p, (a << 2) | (b >> 4));
-      PUSH(p, ((b & 15) << 4) | (c >> 2));
-      PUSH(p, ((c & 3) << 6) | (d));
-    } else if (s[2] != '=' && s[3] == '=') {
-      a = strchr(lut, s[0]) - lut;
-      b = strchr(lut, s[1]) - lut;
-      c = strchr(lut, s[2]) - lut;
+      PUSH(p, ((b & BITS(4)) << 4) | (c >> 2));
+      PUSH(p, ((c & BITS(2)) << 6) | (d));
+    } else if (l == 3) {
+      a = decode(s[0]);
+      b = decode(s[1]);
+      c = decode(s[2]);
 
       PUSH(p, (a << 2) | (b >> 4));
-      PUSH(p, ((b & 15) << 4) | (c >> 2));
-      PUSH(p, (c & 3) << 6);
-    } else if (s[2] == '=' && s[3] == '=') {
-      a = strchr(lut, s[0]) - lut;
-      b = strchr(lut, s[1]) - lut;
+      PUSH(p, ((b & BITS(4)) << 4) | (c >> 2));
+    } else if (l == 2) { 
+      a = decode(s[0]);
+      b = decode(s[1]);
 
       PUSH(p, (a << 2) | (b >> 4));
-      PUSH(p, (b & 15) << 4);
+    } else {
+      /* never reached */
+      return PTPGP_ERR_BASE64_CORRUPT_INPUT;
     }
   }
 
@@ -138,6 +169,9 @@ ptpgp_base64_push(ptpgp_base64_t *p, u8 *src, size_t src_len) {
   if (!src || !src_len) {
     /* encode/decode remaining chunk (if necessary) */
     TRY(convert(p));
+
+    if (e)
+      PUSH(p, '\n');
 
     /* flush remaining output */
     FLUSH(p);
