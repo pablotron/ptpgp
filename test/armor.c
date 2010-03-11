@@ -12,6 +12,15 @@
 
 #define UNUSED(a) ((void) (a))
 
+#ifdef PTPGP_DEBUG
+#include <stdio.h>
+#define D(fmt, ...) fprintf(stderr, "[D] %s:%d:%s() " fmt "\n", __FILE__, __LINE__, __func__, ## __VA_ARGS__)
+#define W(fmt, ...) fprintf(stderr, "[W] %s:%d:%s() " fmt "\n", __FILE__, __LINE__, __func__, ## __VA_ARGS__)
+#else
+#define D(...)
+#define W(...)
+#endif /* PTPGP_DEBUG */
+
 typedef struct {
   ptpgp_base64_t base64;
   ptpgp_crc24_t crc24;
@@ -86,11 +95,13 @@ base64_cb(ptpgp_base64_t *b,
           size_t data_len) {
   dump_context_t *c = (dump_context_t*) b->user_data;
 
+  D("writing data to crc context");
   PTPGP_ASSERT(
     ptpgp_crc24_push(&(c->crc24), data, data_len),
     "write data to crc context"
   );
 
+  D("writing data to stdout (len = %d)", (int) data_len);
   if (!fwrite(data, data_len, 1, stdout))
     ptpgp_sys_die("Couldn't write decoded data to standard output:");
 
@@ -104,16 +115,24 @@ dump_cb(ptpgp_armor_parser_t *a,
         u8 *data,
         size_t data_len) {
   dump_context_t *c = (dump_context_t*) a->user_data;
+  u8 buf[512];
+
+  D("token = %d", (int) t);
 
   switch (t) {
   case PTPGP_ARMOR_PARSER_TOKEN_START_ARMOR:
-    /* init crc24 context */
+    memcpy(buf, data, data_len);
+    buf[data_len] = 0;
+
+    D("start armor \"%s\"", buf);
+
+    D("init crc24 context");
     PTPGP_ASSERT(
       ptpgp_crc24_init(&(c->crc24)),
       "init crc24 context"
     );
 
-    /* initialize base64 decoder */
+    D("init base64 decoder");
     PTPGP_ASSERT(
       ptpgp_base64_init(&(c->base64), 0, base64_cb, c),
       "init base64 decoder"
@@ -125,6 +144,8 @@ dump_cb(ptpgp_armor_parser_t *a,
 
     break;
   case PTPGP_ARMOR_PARSER_TOKEN_HEADER_NAME:
+    D("got header name");
+
     /* if there was a previous header, then flush it */
     if (c->header_len > 0 && c->value_len > 0)
       dump_header(c);
@@ -139,6 +160,8 @@ dump_cb(ptpgp_armor_parser_t *a,
 
     break;
   case PTPGP_ARMOR_PARSER_TOKEN_HEADER_VALUE:
+    D("got header value");
+
     if (c->value_len + data_len > 1024)
       ptpgp_sys_die("armor header value too long");
 
@@ -148,6 +171,8 @@ dump_cb(ptpgp_armor_parser_t *a,
 
     break;
   case PTPGP_ARMOR_PARSER_TOKEN_BODY:
+    D("got armor body fragment");
+    
     /* if there was a previous header, then flush it */
     if (c->header_len > 0 && c->value_len > 0)
       dump_header(c);
@@ -169,19 +194,19 @@ dump_cb(ptpgp_armor_parser_t *a,
 
     break;
   case PTPGP_ARMOR_PARSER_TOKEN_END_ARMOR:
-    /* finalize base64 */
+    D("finalize base64 decoder");
     PTPGP_ASSERT(
       ptpgp_base64_done(&(c->base64)),
       "finalize base64 decoder"
     );
 
-    /* finalize crc24 */
+    D("finalize crc24 context");
     PTPGP_ASSERT(
       ptpgp_crc24_done(&(c->crc24)),
       "finalize crc24 context"
     );
 
-    /* verify checksum */
+    D("verifying checksums");
     verify_crc(c);
 
     break;
@@ -202,30 +227,32 @@ dump(char *path) {
   ptpgp_armor_parser_t a;
   dump_context_t c;
 
-  /* init armor parser */
+  D("init armor parser");
   PTPGP_ASSERT(
     ptpgp_armor_parser_init(&a, dump_cb, &c),
     "init armor parser"
   );
 
-  /* open input file */
+  D("open input file");
   fh = file_open(path);
 
   /* read input file */
   while (!feof(fh) && (len = fread(buf, 1, sizeof(buf), fh)) > 0) {
+    D("sending %d bytes to armor parser", (int) len);
+
     PTPGP_ASSERT(
       ptpgp_armor_parser_push(&a, buf, len),
       "push data to armor parser"
     );
   }
 
-  /* close input file */
+  D("close input file");
   file_close(fh);
 
-  /* finish armor parser */
+  D("finalize armor parser");
   PTPGP_ASSERT(
     ptpgp_armor_parser_done(&a),
-    "finish armor parser"
+    "finalize armor parser"
   );
 }
 

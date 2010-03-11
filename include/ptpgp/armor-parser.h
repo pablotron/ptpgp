@@ -11,6 +11,8 @@ typedef enum {
   PTPGP_ARMOR_PARSER_TOKEN_CRC24,
   PTPGP_ARMOR_PARSER_TOKEN_END_ARMOR,
   PTPGP_ARMOR_PARSER_TOKEN_DONE,
+
+  /* sentinel */
   PTPGP_ARMOR_PARSER_TOKEN_LAST
 } ptpgp_armor_parser_token_t;
 
@@ -19,12 +21,14 @@ typedef ptpgp_err_t (*ptpgp_armor_parser_cb_t)(ptpgp_armor_parser_t *,
                                       u8 *, size_t);
 
 typedef enum {
-  PTPGP_ARMOR_PARSER_STATE_NONE,
-  PTPGP_ARMOR_PARSER_STATE_LINE_START,
+  PTPGP_ARMOR_PARSER_STATE_INIT,
+  PTPGP_ARMOR_PARSER_STATE_SKIP_LINE,
   PTPGP_ARMOR_PARSER_STATE_MAYBE_ENVELOPE,
   PTPGP_ARMOR_PARSER_STATE_HEADERS,
   PTPGP_ARMOR_PARSER_STATE_BODY,
   PTPGP_ARMOR_PARSER_STATE_DONE,
+
+  /* sentinel */
   PTPGP_ARMOR_PARSER_STATE_LAST
 } ptpgp_armor_parser_state_t;
 

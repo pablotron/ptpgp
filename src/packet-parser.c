@@ -131,10 +131,10 @@ retry:
 
             /* clear buffer */
             p->buf_len = 0;
+            SHIFT(i + 1);
 
             /* switch state */
             p->state = STATE(MPI_LIST);
-            SHIFT(i);
             goto retry;
           }
         }
@@ -154,10 +154,10 @@ retry:
 
             /* clear buffer */
             p->buf_len = 0;
+            SHIFT(i + 1);
 
             /* switch state */
             p->state = STATE(MPI_BODY);
-            SHIFT(i);
             goto retry;
           }
         }
@@ -231,10 +231,10 @@ retry:
 
             /* clear buffer */
             p->buf_len = 0;
+            SHIFT(i + 1);
 
             /* switch state */
             p->state = STATE(MPI_LIST);
-            SHIFT(i);
             goto retry;
           } else if (p->buf[0] == 4 && p->buf_len == 6) {
             /* v4 signature packet (rfc4880 5.2.3) */
@@ -258,8 +258,9 @@ retry:
             SEND(p, SIGNATURE_SUBPACKET_HASHED_LIST_START, 0, 0);
 
             p->buf_len = 0;
+            SHIFT(i + 1);
+
             p->state = STATE(SIGNATURE_SUBPACKET_HASHED_LIST);
-            SHIFT(i);
             goto retry;
           }
         }
@@ -279,10 +280,10 @@ retry:
 
             /* clear buffer */
             p->buf_len = 0;
+            SHIFT(i + 1);
 
             /* switch state */
             p->state = STATE(MPI_BODY);
-            SHIFT(i);
             goto retry;
           }
         }
@@ -332,8 +333,9 @@ retry:
 
             SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
 
+            SHIFT(i + 1);
+
             p->state = STATE(SIGNATURE_SUBPACKET_HASHED);
-            SHIFT(i);
             goto retry;
           } else if (p->buf_len == 3 && p->buf[0] >= 192 && p->buf[0] < 255) {
             sp_size = ((p->buf[0] - 192) << 8) + p->buf[1] + 192;
@@ -341,8 +343,9 @@ retry:
 
             SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
 
+            SHIFT(i + 1);
+
             p->state = STATE(SIGNATURE_SUBPACKET_HASHED);
-            SHIFT(i);
             goto retry;
           } else if (p->buf_len == 6 && p->buf[0] == 255) {
             sp_size = (p->buf[1] << 24) |
@@ -353,8 +356,9 @@ retry:
 
             SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
 
+            SHIFT(i + 1);
+
             p->state = STATE(SIGNATURE_SUBPACKET_HASHED);
-            SHIFT(i);
             goto retry;
           } else if (p->buf_len > 6) {
             DIE(p, INVALID_SUBPACKET_HEADER);
@@ -395,9 +399,10 @@ retry:
             /* send unhashed list start */
             SEND(p, SIGNATURE_SUBPACKET_UNHASHED_LIST_START, 0, 0);
 
-            p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED_LIST);
             p->buf_len = 0;
-            SHIFT(i);
+            SHIFT(i + 1);
+
+            p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED_LIST);
             goto retry;
           }
         }
@@ -421,8 +426,9 @@ retry:
 
             SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
 
+            SHIFT(i + 1);
+
             p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED);
-            SHIFT(i);
             goto retry;
           } else if (p->buf_len == 3 && p->buf[0] >= 192 && p->buf[0] < 255) {
             sp_size = ((p->buf[0] - 192) << 8) + p->buf[1] + 192;
@@ -430,8 +436,9 @@ retry:
 
             SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
 
+            SHIFT(i + 1);
+
             p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED);
-            SHIFT(i);
             goto retry;
           } else if (p->buf_len == 6 && p->buf[0] == 255) {
             sp_size = (p->buf[1] << 24) |
@@ -442,9 +449,10 @@ retry:
 
             SEND_SUBPACKET_HEADER(p, sp_size, sp_type);
 
-            p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED);
             p->buf_len = 0;
-            SHIFT(i);
+            SHIFT(i + 1);
+
+            p->state = STATE(SIGNATURE_SUBPACKET_UNHASHED);
             goto retry;
           } else if (p->buf_len > 6) {
             DIE(p, INVALID_SUBPACKET_HEADER);
@@ -478,9 +486,10 @@ retry:
           if (p->buf_len == 2) {
             SEND(p, SIGNATURE_LEFT16, p->buf, 2);
 
-            p->state = STATE(MPI_LIST);
             p->buf_len = 0;
-            SHIFT(i);
+            SHIFT(i + 1);
+
+            p->state = STATE(MPI_LIST);
             goto retry;
           }
         }
@@ -555,9 +564,10 @@ retry:
 
             SEND(p, SYMMETRIC_KEY_ENCRYPTED_SESSION_KEY, 0, 0);
 
-            p->state = STATE(KEY_DATA);
             p->buf_len = 0;
-            SHIFT(i);
+            SHIFT(i + 1);
+
+            p->state = STATE(KEY_DATA);
             goto retry;
           } else if (p->buf_len > 13) {
             D("bad s2k type: %d", p->buf[2]);
@@ -598,7 +608,8 @@ retry:
           p->packet.packet.t4.nested                = p->buf[12];
 
           SEND(p, ONE_PASS_SIGNATURE, 0, 0);
-          SHIFT(i);
+          SHIFT(i + 1);
+
           return PTPGP_OK;
         }
       }
@@ -618,9 +629,10 @@ retry:
             /* send compressed data header */
             SEND(p, COMPRESSED_DATA, 0, 0);
 
-            p->state = STATE(PACKET_DATA);
             p->buf_len = 0;
-            SHIFT(i);
+            SHIFT(i + 1);
+
+            p->state = STATE(PACKET_DATA);
             goto retry;
           }
         }
@@ -682,9 +694,10 @@ retry:
               p->packet.packet.t11.file_name     = NULL;
               p->packet.packet.t11.file_name_len = 0;
 
-              p->state = STATE(PACKET_DATA);
               p->buf_len = 0;
-              SHIFT(i);
+              SHIFT(i + 1);
+
+              p->state = STATE(PACKET_DATA);
               goto retry;
             }
           }
@@ -725,8 +738,9 @@ retry:
 
         SEND(p, SYM_ENCRYPTED_INTEGRITY_PROTECTED_DATA, 0, 0);
 
-        p->state = STATE(PACKET_DATA);
         SHIFT(1);
+
+        p->state = STATE(PACKET_DATA);
         goto retry;
         
         break;

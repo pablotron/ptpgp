@@ -2,7 +2,7 @@
 
 INC="-I../include -DPTPGP_DEBUG"
 # INC=-I../include
-TESTS=stream error armor
+TESTS="stream error armor"
 
 cd ../src
 for i in *.c; do

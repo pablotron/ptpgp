@@ -16,6 +16,7 @@ static char *lut = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 #define FLUSH(p) do {                                                 \
   if ((p)->out_buf_len > 0) {                                         \
+    D("sending %d bytes", (int) (p)->out_buf_len);                    \
     ptpgp_err_t err = (p)->cb((p), (p)->out_buf, (p)->out_buf_len);   \
     if (err)                                                          \
       return (p)->last_err = err;                                     \
@@ -25,7 +26,10 @@ static char *lut = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 } while (0)
 
 #define PUSH(p, c) do {                                               \
+  D("pushing character");                                             \
   (p)->out_buf[(p)->out_buf_len++] = (c);                             \
+  if ((p)->out_buf_len == PTPGP_BASE64_BUFFER_SIZE - 2)               \
+    FLUSH(p);                                                         \
 } while (0)
 
 #define CONVERT(p) do {                                               \

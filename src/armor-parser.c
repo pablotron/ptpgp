@@ -7,6 +7,8 @@
 } while (0)
 
 #define SEND(p, t, b, l) do {                               \
+  D("sending %s (%d bytes)", #t, (int) (l));                \
+                                                            \
   ptpgp_err_t err = (p)->cb(                                \
     (p), (PTPGP_ARMOR_PARSER_TOKEN_##t),                    \
     (b), (l)                                                \
@@ -16,31 +18,28 @@
     return (p)->last_err = err;                             \
 } while (0)
 
-#define DECODE_AND_SEND(p, b, l) do {                       \
-  /* FIXME: need to decode buffer first */                  \
-  SEND(p, BODY, b, l);                                      \
-} while (0)
-
 #define SHIFT(i) do { \
-  src += i;           \
-  src_len -= i;       \
+  src += (i);         \
+  src_len -= (i);     \
 } while (0)
 
 ptpgp_err_t
 ptpgp_armor_parser_init(ptpgp_armor_parser_t *p, ptpgp_armor_parser_cb_t cb, void *user_data) {
   memset(p, 0, sizeof(ptpgp_armor_parser_t));
 
-  p->state = STATE(NONE);
-
+  p->state = STATE(INIT);
   p->cb = cb;
   p->user_data = user_data;
 
+    /* return success */
   return PTPGP_OK;
 }
 
 ptpgp_err_t
 ptpgp_armor_parser_push(ptpgp_armor_parser_t *p, u8 *src, size_t src_len) {
   size_t i, j;
+
+  D("src_len = %d", (int) src_len);
 
   if (p->last_err)
     return p->last_err;
@@ -49,51 +48,64 @@ ptpgp_armor_parser_push(ptpgp_armor_parser_t *p, u8 *src, size_t src_len) {
     DIE(p, ALREADY_DONE);
 
   if (!src || !src_len) {
-    /* if the parser isn in the middle of a message, then raise error */
-    if (p->state != STATE(NONE))
+    /* if the parser isn't in the middle of a message, then raise error */
+    if (p->state != STATE(INIT))
       DIE(p, INCOMPLETE_MESSAGE);
+
+    /* send DONE to clients */
+    SEND(p, DONE, 0, 0);
 
     /* mark parser as finished */
     p->state = STATE(DONE);
-    SEND(p, DONE, 0, 0);
 
     /* return success */
     return PTPGP_OK;
   }
 
+  D("past done check");
 retry:
   if (src_len > 0) {
     switch (p->state) {
-    case STATE(NONE):
+    case STATE(INIT):
       for (i = 0; i < src_len; i++) {
-        if (src[i] == '\n') {
-          p->buf_len = 0;
-          p->state = STATE(LINE_START);
+        p->buf[p->buf_len++] = src[i];
 
-          SHIFT(i);
-          goto retry;
+        p->buf[p->buf_len] = 0;
+        D("INIT: p->buf = \"%s\"", p->buf);
+
+        if (p->buf_len == 5) {
+          if (!memcmp(p->buf, "-----", 5)) {
+            D("found envelope (maybe)");
+            
+            p->buf_len = 0;
+            SHIFT(i + 1);
+
+            p->state = STATE(MAYBE_ENVELOPE);
+            goto retry;
+          } else {
+            p->buf[p->buf_len] = 0;
+            D("not envelope line, line = %s", p->buf);
+
+            p->buf_len = 0;
+            SHIFT(i + 1);
+
+            p->state = STATE(SKIP_LINE);
+            goto retry;
+          }
         }
       }
 
       break;
-    case STATE(LINE_START):
+    case STATE(SKIP_LINE):
       for (i = 0; i < src_len; i++) {
-        p->buf[p->buf_len++] = src[i];
+        if (src[i] == '\n') {
+          /* D("got newline"); */
 
-        if (p->buf_len == 5) {
-          if (!memcmp(p->buf, "-----", 5)) {
-            p->buf_len = 0;
-            p->state = STATE(MAYBE_ENVELOPE);
+          p->buf_len = 0;
+          SHIFT(i + 1);
 
-            SHIFT(i);
-            goto retry;
-          } else {
-            p->buf_len = 0;
-            p->state = STATE(NONE);
-
-            SHIFT(i);
-            goto retry;
-          }
+          p->state = STATE(INIT);
+          goto retry;
         }
       }
 
@@ -102,12 +114,17 @@ retry:
       for (i = 0; i < src_len; i++) {
         p->buf[p->buf_len++] = src[i];
 
+        p->buf[p->buf_len] = 0;
+        D("MAYBE_ENVELOPE: p->buf = \"%s\"", p->buf);
+
         /* ignore lines greater than 80 characters (not an AA header) */
         if (p->buf_len > 80) {
-          p->buf_len = 0;
-          p->state = STATE(NONE);
+          D("not envelope (len > 80)");
 
-          SHIFT(i);
+          p->buf_len = 0;
+          SHIFT(i + 1);
+
+          p->state = STATE(SKIP_LINE);
           goto retry;
         }
 
@@ -122,22 +139,24 @@ retry:
           if (p->buf[p->buf_len - 1] == '\r')
             p->buf_len--;
 
-          if (!memcmp(p->buf + p->buf_len - 5, "-----", 5)) {
-            /* AA header line, pass to callback */
+          if (p->buf_len > 5 && !memcmp(p->buf + p->buf_len - 5, "-----", 5)) {
+            D("found armor envelope, sending name");
+
+            /* got AA header line, pass to callback */
             SEND(p, START_ARMOR, p->buf, p->buf_len - 5);
 
             p->buf_len = 0;
-            p->state = STATE(HEADERS);
+            SHIFT(i + 1);
 
-            SHIFT(i);
+            p->state = STATE(HEADERS);
             goto retry;
           } else {
-            /* not an AA header line */
+            D("not armor envelope");
 
             p->buf_len = 0;
-            p->state = STATE(NONE);
+            SHIFT(i + 1);
 
-            SHIFT(i);
+            p->state = STATE(SKIP_LINE);
             goto retry;
           }
         }
@@ -163,14 +182,14 @@ retry:
           if (p->buf_len == 0) {
             /* end of headers */
             p->buf_len = 0;
-            p->state = STATE(BODY);
+            SHIFT(i + 1);
 
-            SHIFT(i);
+            p->state = STATE(BODY);
             goto retry;
           } else if (p->buf_len < 4) {
             DIE(p, BAD_HEADER_LINE);
           } else {
-            for (j = 0; j < p->buf_len - 1; j++) {
+            for (j = 1; j < p->buf_len - 1; j++) {
               if (p->buf[j] == ':' && p->buf[j + 1] == ' ') {
                 /* send header */
                 SEND(p, HEADER_NAME, p->buf, j);
@@ -178,7 +197,9 @@ retry:
 
                 /* clear buffer */
                 p->buf_len = 0;
-                break;
+                SHIFT(i + 1);
+
+                goto retry;
               }
             }
           }
@@ -203,16 +224,21 @@ retry:
             p->buf[1] = '-';
 
             /* flush buffer */
-            DECODE_AND_SEND(p, p->buf + 1, p->buf_len - 1);
+            if (p->buf_len - 1 > 0)
+              SEND(p, BODY, p->buf + 1, p->buf_len - 1);
+
             p->buf_len = 0;
+            SHIFT(i + 1);
           } else if (p->buf_len == 5 && p->buf[0] == '=') {
             /* send crc24 (still encoded) */
             SEND(p, CRC24, p->buf + 1, 4);
 
             /* clear buffer */
             p->buf_len = 0;
+            SHIFT(i + 1);
 
-            SHIFT(i);
+            /* FIXME: should switch state here */
+
             goto retry;
           } else if (p->buf_len > 11 &&
                      !memcmp(p->buf, "-----", 5) &&
@@ -221,23 +247,29 @@ retry:
             SEND(p, END_ARMOR, p->buf + 5, p->buf_len - 10);
 
             p->buf_len = 0;
-            p->state = STATE(NONE);
+            SHIFT(i + 1);
 
-            SHIFT(i);
+            p->state = STATE(INIT);
             goto retry;
           } else {
             /* flush buffer */
-            SEND(p, BODY, p->buf, p->buf_len);
+            if (p->buf_len > 0)
+              SEND(p, BODY, p->buf, p->buf_len);
+
             p->buf_len = 0;
+            SHIFT(i + 1);
           }
         }
 
         /* check for buffer overflow */
         if (p->buf_len == PTPGP_ARMOR_PARSER_BUFFER_SIZE - 1) {
           /* flush buffer */
-          /* (XXX: this means long lines aren't properly dash-escaped */
-          DECODE_AND_SEND(p, p->buf, p->buf_len);
+          /* (FIXME: this means long lines aren't properly dash-escaped */
+          if (p->buf_len > 0)
+            SEND(p, BODY, p->buf, p->buf_len);
+
           p->buf_len = 0;
+          SHIFT(i + 1);
         }
       }
 
@@ -254,5 +286,6 @@ retry:
 
 ptpgp_err_t
 ptpgp_armor_parser_done(ptpgp_armor_parser_t *p) {
+  D("entered");
   return ptpgp_armor_parser_push(p, 0, 0);
 }
