@@ -258,6 +258,8 @@ retry:
 
             p->buf_len = 0;
             SHIFT(i + 1);
+
+            goto retry;
           }
         }
 

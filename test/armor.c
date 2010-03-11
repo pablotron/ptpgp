@@ -177,6 +177,12 @@ dump_cb(ptpgp_armor_parser_t *a,
     if (c->header_len > 0 && c->value_len > 0)
       dump_header(c);
 
+#ifdef PTPGP_DEBUG
+    memcpy(buf, data, data_len);
+    buf[data_len] = 0;
+    D("got body: \"%s\" (%d bytes)", buf, (int) data_len);
+#endif /* PTPGP_DEBUG */
+
     PTPGP_ASSERT(
       ptpgp_base64_push(&(c->base64), data, data_len),
       "push data to base64 decoder"
@@ -186,6 +192,12 @@ dump_cb(ptpgp_armor_parser_t *a,
   case PTPGP_ARMOR_PARSER_TOKEN_CRC24:
     if (data_len != 4)
       ptpgp_sys_die("invalid crc length: %d", data_len);
+
+#ifdef PTPGP_DEBUG
+    memcpy(buf, data, data_len);
+    buf[data_len] = 0;
+    D("got crc24: \"%s\" (%d bytes)", buf, (int) data_len);
+#endif /* PTPGP_DEBUG */
 
     PTPGP_ASSERT(
       ptpgp_base64_decode(data, data_len, c->armor_crc, 3, 0),
