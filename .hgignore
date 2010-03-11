@@ -6,4 +6,5 @@ syntax: glob
 test/stream
 test/error
 test/armor
+test/base64
 src/inc
