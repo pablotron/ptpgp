@@ -3,5 +3,7 @@ syntax: glob
 *.o
 *.sw?
 
-test/dump-stream
+test/stream
+test/error
+test/armor
 src/inc
