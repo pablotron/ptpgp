@@ -99,7 +99,7 @@ void file_read(char *path,
     cb(m.addr, m.size, user_data);
     file_unmap(&m);
   } else {
-    /* read input file */
+    /* if mmap() failed, then read input file sequentially */
     while (!feof(fh) && (len = fread(buf, 1, sizeof(buf), fh)) > 0)
       cb(buf, len, user_data);
   }
