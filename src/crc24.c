@@ -1,7 +1,27 @@
 #include "internal.h"
 
-#define CRC24_INIT 0xB704CEL
-#define CRC24_POLY 0x1864CFBL
+/* 
+ * typedef union {
+ *   uint32_t i;
+ *   char     c[4];
+ * } packed;
+ * 
+ * static packed crc24_init = {
+ *   .c = {0x00, 0xB7, 0x04, 0xCE}
+ * };
+ * 
+ * static packed crc24_poly = {
+ *   .c = {0x01, 0x86, 0x4C, 0xFB}
+ * };
+ */ 
+
+#if 0 /* mine */
+#define CRC24_INIT 0xCE04B700L
+#define CRC24_POLY 0xFB4C8601L
+#endif /* 0 */
+
+#define CRC24_INIT 0x00B704CEL
+#define CRC24_POLY 0x01864CFBL
 
 ptpgp_err_t
 ptpgp_crc24_init(ptpgp_crc24_t *r) {
@@ -22,21 +42,22 @@ ptpgp_crc24_push(ptpgp_crc24_t *r, u8 *src, size_t src_len) {
 
   if (!src || !src_len) {
     r->done = 1;
+
+    /* mask out high bits */
+    r->crc &= 0x00FFFFFFL;
+
     return PTPGP_OK;
   }
 
   while (src_len--) {
-    r->crc ^= (*src++) << 16;
+    r->crc ^= (*(src++)) << 16;
 
     for (i = 0; i < 8; i++) {
       r->crc <<= 1;
-      if (r->crc & 0x1000000)
+      if (r->crc & 0x01000000L)
         r->crc ^= CRC24_POLY;
     }
   }
-
-  /* mask out high bits */
-  r->crc &= 0xFFFFFFL;
 
   /* return success */
   return PTPGP_OK;

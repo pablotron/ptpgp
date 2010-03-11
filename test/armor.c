@@ -25,6 +25,7 @@ typedef struct {
   ptpgp_base64_t base64;
   ptpgp_crc24_t crc24;
 
+  bool got_armor_crc;
   u8 armor_crc[3];
 
   char header[1024],
@@ -70,8 +71,8 @@ verify_crc(dump_context_t *c) {
                    (c->armor_crc[2]);
 
   /* compare checksums */
-  if (body_crc != armor_crc)
-    ptpgp_sys_die("CRC mismatch (body: %d, armor: %d)", body_crc, armor_crc);
+  if (c->got_armor_crc && body_crc != armor_crc)
+    ptpgp_sys_die("CRC mismatch (body: %6x, armor: %6x)", body_crc, armor_crc);
 }
 
 static void
@@ -121,6 +122,9 @@ dump_cb(ptpgp_armor_parser_t *a,
 
   switch (t) {
   case PTPGP_ARMOR_PARSER_TOKEN_START_ARMOR:
+    /* clear dump context */
+    memset(c, 0, sizeof(dump_context_t));
+
     memcpy(buf, data, data_len);
     buf[data_len] = 0;
 
@@ -199,9 +203,11 @@ dump_cb(ptpgp_armor_parser_t *a,
     D("got crc24: \"%s\" (%d bytes)", buf, (int) data_len);
 #endif /* PTPGP_DEBUG */
 
+    c->got_armor_crc = 1;
+
     PTPGP_ASSERT(
       ptpgp_base64_decode(data, data_len, c->armor_crc, 3, 0),
-      "decode armor crc"
+      "decode armor crc (len = %d)", data_len
     );
 
     break;
