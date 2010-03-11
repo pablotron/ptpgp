@@ -67,3 +67,18 @@ ptpgp_err_t
 ptpgp_crc24_done(ptpgp_crc24_t *r) {
   return ptpgp_crc24_push(r, 0, 0);
 }
+
+long crc_octets(unsigned char *octets, size_t len)
+{
+  long crc = CRC24_INIT;
+  int i;
+  while (len--) {
+    crc ^= (*octets++) << 16;
+    for (i = 0; i < 8; i++) {
+      crc <<= 1;
+      if (crc & 0x1000000)
+        crc ^= CRC24_POLY;
+    }
+  }
+  return crc & 0xFFFFFFL;
+}

@@ -39,6 +39,7 @@ static char *lut = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
                    "abcdefghijklmnopqrstuvwxyz"
                    "0123456789+/";
 
+#define MASK(n) ((1 << n) - 1)
 static ptpgp_err_t
 convert(ptpgp_base64_t *p) {
   u8    *s = p->src_buf;
@@ -51,12 +52,12 @@ convert(ptpgp_base64_t *p) {
   if (e) {
     if (l == 3) {
       PUSH(p, lut[s[0] >> 2]);
-      PUSH(p, lut[(s[0] & 3) << 4 | s[1] >> 4]);
-      PUSH(p, lut[(s[1] & 15) << 2 | s[2] >> 5]);
+      PUSH(p, lut[((s[0] & 3) << 4)  | (s[1] >> 4)]);
+      PUSH(p, lut[((s[1] & 15) << 2) | (s[2] >> 6)]);
       PUSH(p, lut[s[2] & 63]);
     } else if (l == 2) {
       PUSH(p, lut[s[0] >> 2]);
-      PUSH(p, lut[(s[0] & 3) << 4 | s[1] >> 4]);
+      PUSH(p, lut[((s[0] & 3) << 4) | (s[1] >> 4)]);
       PUSH(p, lut[(s[1] & 15) << 2]);
       PUSH(p, '=');
     } else if (l == 1) {
@@ -78,22 +79,22 @@ convert(ptpgp_base64_t *p) {
       c = strchr(lut, s[2]) - lut;
       d = strchr(lut, s[3]) - lut;
 
-      PUSH(p, a << 2 | b >> 4);
-      PUSH(p, (b & 15) << 4 | c >> 2);
-      PUSH(p, (c & 3) << 6 | d);
+      PUSH(p, (a << 2) | (b >> 4));
+      PUSH(p, ((b & 15) << 4) | (c >> 2));
+      PUSH(p, ((c & 3) << 6) | (d));
     } else if (s[2] != '=' && s[3] == '=') {
       a = strchr(lut, s[0]) - lut;
       b = strchr(lut, s[1]) - lut;
       c = strchr(lut, s[2]) - lut;
 
-      PUSH(p, a << 2 | b >> 4);
-      PUSH(p, (b & 15) << 4 | c >> 2);
+      PUSH(p, (a << 2) | (b >> 4));
+      PUSH(p, ((b & 15) << 4) | (c >> 2));
       PUSH(p, (c & 3) << 6);
     } else if (s[2] == '=' && s[3] == '=') {
       a = strchr(lut, s[0]) - lut;
       b = strchr(lut, s[1]) - lut;
 
-      PUSH(p, a << 2 | b >> 4);
+      PUSH(p, (a << 2) | (b >> 4));
       PUSH(p, (b & 15) << 4);
     }
   }

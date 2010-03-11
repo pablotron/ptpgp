@@ -1,52 +1,17 @@
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <ptpgp/ptpgp.h>
+#include "test-common.h"
 
-#define IS_HELP(s) (          \
-  !strncmp((s), "-h", 3) ||   \
-  !strncmp((s), "-?", 3) ||   \
-  !strncmp((s), "--help", 3)  \
-)
+#define USAGE \
+  "%s - Decode and print PGP packet stream.\n"
 
-#define UNUSED(a) ((void) (a))
-
-static void
-print_usage_and_exit(char *app) {
-  printf("%s - Decode and print PGP packet stream.\n", app);
-  exit(EXIT_SUCCESS);
-}
-
-static FILE *
-file_open(char *path) {
-  FILE *r;
-
-  if (!strncmp(path, "-", 2)) {
-    r = stdin;
-  } else {
-    /* open input file */
-    if ((r = fopen(path, "rb")) == NULL)
-      ptpgp_sys_die("Couldn't open file \"%s\":", path);
-  }
-
-  /* return result */
-  return r;
-}
-
-static void
-file_close(FILE *fh) {
-  if (fh != stdin && fclose(fh))
-    ptpgp_sys_warn("Couldn't close file:");
-}
-
+/* evil globals */
 static ptpgp_packet_parser_t pp;
 static ptpgp_signature_subpacket_parser_t sspp;
 
-static char *algo_to_s(ptpgp_algorithm_type_t t,
-                       uint32_t a,
-                       char *buf,
-                       size_t buf_len) {
+static char *
+algo_to_s(ptpgp_algorithm_type_t t,
+          uint32_t a,
+          char *buf,
+          size_t buf_len) {
   ptpgp_err_t err = ptpgp_algorithm_to_s(t, a, (u8*) buf, buf_len, NULL);
 
   /* check for error */
@@ -69,12 +34,11 @@ static char *algo_to_s(ptpgp_algorithm_type_t t,
   return buf;
 }
 
-
 #define P "    signature_subpacket: "
 static ptpgp_err_t
-dump_signature_subpacket_cb(ptpgp_signature_subpacket_parser_t *p,
-                            ptpgp_signature_subpacket_parser_token_t t,
-                            u8 *data, size_t data_len) {
+signature_subpacket_cb(ptpgp_signature_subpacket_parser_t *p,
+                       ptpgp_signature_subpacket_parser_token_t t,
+                       u8 *data, size_t data_len) {
   char buf[1024];
 
   UNUSED(p);
@@ -258,10 +222,10 @@ dump_signature_subpacket_cb(ptpgp_signature_subpacket_parser_t *p,
 #endif /* PTPGP_DEBUG */
 
 static ptpgp_err_t
-dump_packet_cb(ptpgp_packet_parser_t *p,
-               ptpgp_packet_parser_token_t t,
-               ptpgp_packet_t *packet,
-               u8 *data, size_t data_len) {
+packet_cb(ptpgp_packet_parser_t *p,
+          ptpgp_packet_parser_token_t t,
+          ptpgp_packet_t *packet,
+          u8 *data, size_t data_len) {
   u8 key_id[20];
   char buf[1024];
   ptpgp_signature_subpacket_header_t *subpacket_header;
@@ -398,7 +362,7 @@ dump_packet_cb(ptpgp_packet_parser_t *p,
         ptpgp_signature_subpacket_parser_init(
           &sspp,
           subpacket_header->type,
-          dump_signature_subpacket_cb,
+          signature_subpacket_cb,
           NULL
         ),
 
@@ -465,10 +429,10 @@ dump_packet_cb(ptpgp_packet_parser_t *p,
 }
 
 static ptpgp_err_t
-dump_stream_cb(ptpgp_stream_parser_t *p,
-               ptpgp_stream_parser_token_t t,
-               ptpgp_packet_header_t *header,
-               u8 *data, size_t data_len) {
+stream_cb(ptpgp_stream_parser_t *p,
+          ptpgp_stream_parser_token_t t,
+          ptpgp_packet_header_t *header,
+          u8 *data, size_t data_len) {
   char buf[1024];
 
   UNUSED(p);
@@ -490,7 +454,7 @@ dump_stream_cb(ptpgp_stream_parser_t *p,
 
     /* initialize packet parser */
     PTPGP_ASSERT(
-      ptpgp_packet_parser_init(&pp, header->content_tag, dump_packet_cb, NULL),
+      ptpgp_packet_parser_init(&pp, header->content_tag, packet_cb, NULL),
       "initialize packet parser for tag %d", header->content_tag
     );
 
@@ -519,32 +483,28 @@ dump_stream_cb(ptpgp_stream_parser_t *p,
 }
 
 static void
+read_cb(u8 *data, size_t data_len, void *user_data) {
+  ptpgp_stream_parser_t *p = (ptpgp_stream_parser_t*) user_data;
+
+  /* write file data to parser */
+  PTPGP_ASSERT(
+    ptpgp_stream_parser_push(p, data, data_len),
+    "write data to parser"
+  );
+}
+
+static void
 dump(char *path) {
-  FILE *fh;
-  int len;
-  u8 buf[1024];
   ptpgp_stream_parser_t p;
 
   /* init ptpgp stream parser */
   PTPGP_ASSERT(
-    ptpgp_stream_parser_init(&p, dump_stream_cb, path),
+    ptpgp_stream_parser_init(&p, stream_cb, NULL),
     "initialize stream parser for \"%s\"", path
   );
 
-  /* open input file */
-  fh = file_open(path);
-
-  /* dump packets from file */
-  while (!feof(fh) && (len = fread(buf, 1, sizeof(buf), fh)) > 0) {
-    /* write file data to parser */
-    PTPGP_ASSERT(
-      ptpgp_stream_parser_push(&p, buf, len),
-      "write data to parser"
-    );
-  }
-
-  /* close input file */
-  file_close(fh);
+  /* read input file */
+  file_read(path, read_cb, &p);
 
   /* finish parser */
   PTPGP_ASSERT(
@@ -554,13 +514,13 @@ dump(char *path) {
 }
 
 int main(int argc, char *argv[]) {
-  int i;
-
   if (argc > 1) {
+    int i;
+
     /* check for help option */
     for (i = 1; i < argc; i++)
       if (IS_HELP(argv[i]))
-        print_usage_and_exit(argv[0]);
+        print_usage_and_exit(argv[0], USAGE);
 
     /* dump each input file */
     for (i = 1; i < argc; i++)

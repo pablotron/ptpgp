@@ -23,6 +23,23 @@
   src_len -= (i);     \
 } while (0)
 
+/* define our own isspace function so it doesn't get hosed by the locale */
+#define WS(c) (   \
+  (c) == ' '  ||  \
+  (c) == '\t' ||  \
+  (c) == '\r' ||  \
+  (c) == '\v' ||  \
+  (c) == '\f' ||  \
+  (c) == '\n'     \
+)
+
+#define TRIM_WHITESPACE(p) do {                               \
+  /* strip trailing whitespace (nl, cr, etc) */               \
+  while ((p)->buf_len > 0 && WS((p)->buf[(p)->buf_len - 1]))  \
+    (p)->buf_len--;                                           \
+} while (0)
+
+
 ptpgp_err_t
 ptpgp_armor_parser_init(ptpgp_armor_parser_t *p, ptpgp_armor_parser_cb_t cb, void *user_data) {
   memset(p, 0, sizeof(ptpgp_armor_parser_t));
@@ -132,12 +149,8 @@ retry:
          * a newline, then this might be the beginning of an AA chunk */
         if (p->buf_len > 6 && p->buf[p->buf_len - 1] == '\n') {
 
-          /* strip newline */
-          p->buf_len--;
-
-          /* strip cr */
-          if (p->buf[p->buf_len - 1] == '\r')
-            p->buf_len--;
+          /* strip trailing whitespace (nl, cr, etc) */
+          TRIM_WHITESPACE(p);
 
           if (p->buf_len > 5 && !memcmp(p->buf + p->buf_len - 5, "-----", 5)) {
             D("found armor envelope, sending name");
@@ -175,8 +188,8 @@ retry:
           /* strip newline */
           p->buf_len--;
 
-          /* strip cr */
-          if (p->buf_len > 0 && p->buf[p->buf_len - 1] == '\r')
+          /* strip whitespace */
+          while (p->buf_len > 0 && p->buf[p->buf_len - 1] == '\r')
             p->buf_len--;
 
           if (p->buf_len == 0) {
@@ -212,12 +225,8 @@ retry:
         p->buf[p->buf_len++] = src[i];
 
         if (src[i] == '\n') {
-          /* strip newline */
-          p->buf_len--;
-
-          /* strip cr */
-          if (p->buf_len > 0 && p->buf[p->buf_len - 1] == '\r')
-            p->buf_len--;
+          /* strip trailing whitespace characters */
+          TRIM_WHITESPACE(p);
 
           if (p->buf_len > 1 && p->buf[0] == '-' && p->buf[1] == ' ') {
             /* handle dash escape */
