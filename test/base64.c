@@ -10,9 +10,11 @@
 
 static ptpgp_err_t
 base64_cb(ptpgp_base64_t *b, u8 *data, size_t data_len) {
+  FILE *fh = (FILE*) b->user_data;
+
   /* write output */
-  if (!fwrite(data, data_len, 1, (FILE*) b->user_data))
-    ptpgp_sys_die("Couldn't write decoded data to standard output:");
+  if (!fwrite(data, data_len, 1, fh))
+    ptpgp_sys_die("Couldn't write decoded data:");
 
   /* return success */
   return PTPGP_OK;
@@ -22,6 +24,7 @@ static void
 read_cb(u8 *data, size_t data_len, void *user_data) {
   ptpgp_base64_t *b = (ptpgp_base64_t*) user_data;
 
+  /* write file data to base64 context */
   PTPGP_ASSERT(
     ptpgp_base64_push(b, data, data_len),
     "push data to base64 context"
@@ -32,6 +35,7 @@ static void
 dump(char *path, bool encode) {
   ptpgp_base64_t b;
 
+  /* init base64 context */
   PTPGP_ASSERT(
     ptpgp_base64_init(&b, encode, base64_cb, stdout),
     "init base64 context"
@@ -40,6 +44,7 @@ dump(char *path, bool encode) {
   /* read input file and pass it to decoder */
   file_read(path, read_cb, &b);
 
+  /* finalize base64 context */
   PTPGP_ASSERT(
     ptpgp_base64_done(&b),
     "finalize base64 context"
@@ -65,7 +70,7 @@ int main(int argc, char *argv[]) {
 
   /* dump file(s) */
   if (argc > 2) {
-    for (i = 2; (int) i < argc; i++);
+    for (i = 2; (int) i < argc; i++)
       dump(argv[i], encode);
   } else {
     dump("-", encode);
