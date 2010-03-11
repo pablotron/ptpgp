@@ -16,7 +16,7 @@ typedef enum {
 
 typedef ptpgp_err_t (*ptpgp_armor_parser_cb_t)(ptpgp_armor_parser_t *,
                                       ptpgp_armor_parser_token_t,
-                                      char *, size_t);
+                                      u8 *, size_t);
 
 typedef enum {
   PTPGP_ARMOR_PARSER_STATE_NONE,
@@ -36,10 +36,10 @@ struct ptpgp_armor_parser_t_ {
   ptpgp_armor_parser_cb_t cb;
   void *user_data;
 
-  char buf[PTPGP_ARMOR_PARSER_BUFFER_SIZE];
+  u8 buf[PTPGP_ARMOR_PARSER_BUFFER_SIZE];
   size_t buf_len;
 
-  char out_buf[PTPGP_ARMOR_PARSER_OUTPUT_BUFFER_SIZE];
+  u8 out_buf[PTPGP_ARMOR_PARSER_OUTPUT_BUFFER_SIZE];
   size_t out_buf_len;
 };
 
@@ -47,7 +47,7 @@ ptpgp_err_t
 ptpgp_armor_parser_init(ptpgp_armor_parser_t *p, ptpgp_armor_parser_cb_t cb, void *user_data);
 
 ptpgp_err_t
-ptpgp_armor_parser_push(ptpgp_armor_parser_t *p, char *src, size_t src_len);
+ptpgp_armor_parser_push(ptpgp_armor_parser_t *p, u8 *src, size_t src_len);
 
 ptpgp_err_t
 ptpgp_armor_parser_done(ptpgp_armor_parser_t *p);

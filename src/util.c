@@ -24,14 +24,19 @@ ptpgp_err_t ptpgp_to_hex(u8 *src, size_t src_len, u8 *dst, size_t dst_len) {
 
 static void
 sys_carp(char *prefix, int saved_errno, char *msg) {
-  char *err_str = strerror(saved_errno);
+  if (msg[strlen(msg) - 1] == ':') {
+    char *err_str = strerror(saved_errno);
 
-  /* make sure error string is defined */
-  if (!err_str)
-    err_str = "unknown error";
+    /* make sure error string is defined */
+    if (!err_str)
+      err_str = "unknown error";
 
-  /* print error */
-  fprintf(stderr, "[%s] %s: %s\n", prefix, msg, err_str);
+    /* print error */
+    fprintf(stderr, "[%s] %s %s\n", prefix, msg, err_str);
+  } else {
+    /* print error */
+    fprintf(stderr, "[%s] %s\n", prefix, msg);
+  }
 }
 
 void

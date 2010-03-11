@@ -39,7 +39,7 @@ ptpgp_armor_parser_init(ptpgp_armor_parser_t *p, ptpgp_armor_parser_cb_t cb, voi
 }
 
 ptpgp_err_t
-ptpgp_armor_parser_push(ptpgp_armor_parser_t *p, char *src, size_t src_len) {
+ptpgp_armor_parser_push(ptpgp_armor_parser_t *p, u8 *src, size_t src_len) {
   size_t i, j;
 
   if (p->last_err)

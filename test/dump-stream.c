@@ -21,22 +21,13 @@ print_usage_and_exit(char *app) {
 static FILE *
 file_open(char *path) {
   FILE *r;
-  char buf[1024];
 
   if (!strncmp(path, "-", 2)) {
     r = stdin;
   } else {
     /* open input file */
-    if ((r = fopen(path, "rb")) == NULL) {
-      /* build error message */
-      snprintf(buf, sizeof(buf), "[FATAL] Couldn't open file \"%s\"", path);
-
-      /* print error message */
-      perror(buf);
-
-      /* exit with error */
-      exit(EXIT_FAILURE);
-    }
+    if ((r = fopen(path, "rb")) == NULL)
+      ptpgp_sys_die("Couldn't open file \"%s\":", path);
   }
 
   /* return result */
@@ -46,7 +37,7 @@ file_open(char *path) {
 static void
 file_close(FILE *fh) {
   if (fh != stdin && fclose(fh))
-    perror("[WARNING] Couldn't close file");
+    ptpgp_sys_warn("Couldn't close file:");
 }
 
 static ptpgp_packet_parser_t pp;
