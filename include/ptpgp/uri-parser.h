@@ -1,15 +1,3 @@
-/* 
- * typedef struct {
- *   u8 scheme[32],
- *      auth[128],
- *      host[256],
- *      port[32],
- *      path[1024],
- *      query[1024];
- * } ptpgp_uri_t;
- * 
- */ 
-
 #define PTPGP_URI_PARSER_BUFFER_SIZE 1024
 
 typedef struct ptpgp_uri_parser_t_ ptpgp_uri_parser_t;
