@@ -24,12 +24,11 @@ verify_crc(dump_context_t *c) {
                    (c->armor_crc[1] <<  8) |
                    (c->armor_crc[2]);
 
-  /* FIXME: temporarily disable verify crc */
-  return;
-
   /* compare checksums */
   if (c->got_armor_crc && body_crc != armor_crc)
     ptpgp_sys_die("CRC mismatch (body: %6x, armor: %6x)", body_crc, armor_crc);
+
+  D("armor crc ok");
 }
 
 static void
