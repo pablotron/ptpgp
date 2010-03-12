@@ -63,25 +63,6 @@ static int d_lut[] = {
   41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1
 };
 
-#if 0
-static u8
-decode(u8 c) {
-  if (c >= 'A' && c <= 'Z')
-    return c - 'A';
-  if (c >= 'a' && c <= 'z')
-    return c - 'a' + 26;
-  if (c >= '0' && c <= '9')
-    return c - '0' + 52;
-  if (c == '+')
-    return 62;
-  if (c == '/')
-    return 63;
-
-  /* never reached */
-  return 0xFF;
-}
-#endif /* 0 */
-
 #define BITS(n) ((1 << n) - 1)
 
 static ptpgp_err_t
