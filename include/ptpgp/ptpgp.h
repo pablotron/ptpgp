@@ -23,11 +23,12 @@ extern "C" {
 #include <ptpgp/algorithm.h>
 #include <ptpgp/key-flag.h>
 #include <ptpgp/s2k.h>
+#include <ptpgp/crc24.h>
+#include <ptpgp/base64.h>
 #include <ptpgp/packet-header.h>
 #include <ptpgp/stream-parser.h>
 #include <ptpgp/armor-parser.h>
-#include <ptpgp/crc24.h>
-#include <ptpgp/base64.h>
+#include <ptpgp/armor-encoder.h>
 #include <ptpgp/signature-type.h>
 #include <ptpgp/packet.h>
 #include <ptpgp/signature-subpacket.h>

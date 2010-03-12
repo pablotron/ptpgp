@@ -75,6 +75,13 @@ typedef enum {
   /* crc24 errors */
   PTPGP_ERR_CRC24_ALREADY_DONE, /* crc24 context already done */
 
+  /* armor encoder errors */
+  PTPGP_ERR_ARMOR_ENCODER_ENVELOPE_NAME_TOO_LONG, /* armor envelope name too long */
+  PTPGP_ERR_ARMOR_ENCODER_HEADER_NAME_TOO_LONG, /* header name too long */
+  PTPGP_ERR_ARMOR_ENCODER_HEADER_VALUE_TOO_LONG, /* header value too long */
+  PTPGP_ERR_ARMOR_ENCODER_MISSING_HEADER_VALUE, /* missing header value */
+  PTPGP_ERR_ARMOR_ENCODER_ALREADY_DONE, /* armor encoder context already done */
+
   /* sentinel */
   PTPGP_ERR_LAST
 } ptpgp_err_t;

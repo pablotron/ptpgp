@@ -77,6 +77,13 @@ static char *errors[] = {
   /* crc24 errors */
   "crc24 context already done",
 
+  /* armor encoder errors */
+  "armor envelope name too long",
+  "header name too long",
+  "header value too long",
+  "missing header value",
+  "armor encoder context already done",
+
   /* sentinel */
   NULL
 };

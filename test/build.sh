@@ -2,7 +2,7 @@
 
 INC="-I../include -DPTPGP_DEBUG -O2"
 # INC=-I../include
-TESTS="stream error armor base64"
+TESTS="stream error armor base64 armor-encoder"
 
 cd ../src
 for i in *.c; do
