@@ -55,9 +55,12 @@ typedef struct {
   ptpgp_requirement_t    interpret,
                          generate;
 
-  char                  *name,
-                        *oid,
-                        *url;
+  char                  *name;
+
+  /* algorithm-specific numbers */
+  uint32_t               symmetric_block_size,
+                         num_public_key_mpis,
+                         num_private_key_mpis;
 } ptpgp_algorithm_info_t;
 
 /* public key algorithms (rfc4880 9.1) */

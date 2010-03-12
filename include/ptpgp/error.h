@@ -48,6 +48,7 @@ typedef enum {
   PTPGP_ERR_PACKET_PARSER_BAD_S2K_TYPE, /* invalid S2K type */
   PTPGP_ERR_PACKET_PARSER_BAD_MDC_SIZE, /* invalid MDC size */
   PTPGP_ERR_PACKET_PARSER_BAD_PUBLIC_KEY_PACKET, /* bad public key packet */
+  PTPGP_ERR_PACKET_PARSER_BAD_SECRET_KEY_CHECKSUM, /* bad secret key checksum */
 
   /* signature type errors */
   PTPGP_ERR_SIGNATURE_TYPE_UNKNOWN_TYPE, /* unknown signature type */

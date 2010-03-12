@@ -783,9 +783,15 @@ retry:
       }
 
       break;
-    /* public-key/subkey packet (t6, rfc4880 5.5.1.1/5.5.1.2) */
+    /* public-key packets     (t6, rfc4880 5.5.1.1 and 5.5.2)
+     * public-subkey packets  (t14, rfc4880 5.5.1.2 and 5.5.2)
+     * secret-key packets     (t5, rfc4880 5.5.1.3 and 5.5.3)
+     * secret-subkey packets  (t7, rfc4880 5.5.1.4 and 5.5.3) 
+     */
     case PTPGP_TAG_PUBLIC_KEY:
     case PTPGP_TAG_PUBLIC_SUBKEY:
+    case PTPGP_TAG_SECRET_KEY:
+    case PTPGP_TAG_SECRET_SUBKEY:
       switch (p->state) {
       case STATE(INIT):
         for (i = 0; i < src_len; i++) {
@@ -793,7 +799,7 @@ retry:
 
           if (p->buf_len > 4) {
             ptpgp_err_t err;
-            ptpgp_public_key_algorithm_info_t *info;
+            ptpgp_algorithm_info_t *info;
 
             if (p->buf_len == 5) {
               /* populate shared fields */
@@ -813,7 +819,8 @@ retry:
               }
 
               /* get public key algorithm info */
-              err = ptpgp_public_key_algorithm_info(
+              err = ptpgp_algorithm_info(
+                PTPGP_ALGORITHM_TYPE_PUBLIC_KEY,
                 p->packet.packet.t6.all.public_key_algorithm,
                 &info
               );
@@ -823,13 +830,12 @@ retry:
                 return p->last_err = err;
 
               /* get num remaining mpis */
-              p->packet.packet.t6.all.num_mpis = info->num_key_packet_mpis;
+              p->packet.packet.t6.all.num_mpis = info->num_public_key_mpis;
+              p->packet.packet.t5.num_mpis     = info->num_private_key_mpis;
+              p->num_mpis = info->num_public_key_mpis;
 
               /* send packet info */
-              if (p->packet.tag == PTPGP_TAG_PUBLIC_KEY)
-                SEND(p, PUBLIC_KEY, 0, 0);
-              else
-                SEND(p, PUBLIC_SUBKEY, 0, 0);
+              SEND(p, KEY_PACKET_HEADER, 0, 0);
 
               p->buf_len = 0;
               SHIFT(i + i);
@@ -887,15 +893,209 @@ retry:
           SEND(p, MPI_END, 0, 0);
 
           /* decriment mpi count */
-          p->packet.packet.t6.all.num_mpis--;
+          p->num_mpis--;
 
           /* switch state */
-          if (p->packet.packet.t6.all.num_mpis > 0)
+          if (p->num_mpis > 0)
             p->state = STATE(MPI_LIST);
-          else
-            /* any additional data is an error */
-            p->state = STATE(LAST);
+          else {
+            switch (p->packet.tag) {
+            case PTPGP_TAG_PUBLIC_KEY:
+            case PTPGP_TAG_PUBLIC_SUBKEY:
+              /* any additional data is an error */
+              p->state = STATE(LAST);
+              break;
+            case PTPGP_TAG_SECRET_KEY:
+            case PTPGP_TAG_SECRET_SUBKEY:
+              if (p->packet.packet.t5.key_usage || 
+                  p->packet.packet.t5.plaintext_secret_key) {
+                /* have private key fields; now read the checksum */
+                p->state = STATE(SECRET_KEY_CHECKSUM);
+              } else {
+                /* now fetch private key fields */
+                p->state = STATE(SECRET_KEY_FIELDS);
+              }
+
+              break;
+            default:
+              /* if we reach here, it's an error */
+              D("invalid packet tag");
+              DIE(p, INVALID_STATE);
+            }
+          }
+
           goto retry;
+        }
+
+        break;
+      case STATE(SECRET_KEY_FIELDS):
+        p->packet.packet.t5.key_usage = src[0];
+        p->num_mpis = p->packet.packet.t5.num_mpis;
+
+        if (src[0] == 254 || src[0] == 255) {
+          /* encrypted key with s2k specifier */
+          p->state = STATE(SECRET_KEY_SYMMETRIC_ALGORITHM);
+        } else if (src[0] > 0) {
+          /* octet is symmetric algorithm */
+          ptpgp_algorithm_info_t *info;
+          ptpgp_err_t err;
+
+          /* get symmetric algorithm info */
+          err = ptpgp_algorithm_info(
+            PTPGP_ALGORITHM_TYPE_SYMMETRIC_KEY,
+            src[0], &info
+          );
+
+          /* check for error */
+          if (err != PTPGP_OK)
+            return p->last_err = err;
+
+          /* save algorithm in packet and blcok size in context */
+          p->packet.packet.t5.symmetric_algorithm = src[0];
+          p->symmetric_block_size = info->symmetric_block_size;
+
+          /* get IV */
+          p->state = STATE(SECRET_KEY_IV);
+        } else {
+          /* key is not encrypted, so save the number of mpis
+           * and switch state */
+          p->packet.packet.t5.plaintext_secret_key = 1;
+          SEND(p, SECRET_KEY_PACKET_HEADER, 0, 0);
+          p->state = STATE(MPI_LIST);
+        }
+
+        p->buf_len = 0;
+        SHIFT(1);
+
+        goto retry;
+
+        break;
+      case STATE(SECRET_KEY_SYMMETRIC_ALGORITHM):
+        do {
+          ptpgp_algorithm_info_t *info;
+          ptpgp_err_t err;
+
+          /* get symmetric algorithm info */
+          err = ptpgp_algorithm_info(
+            PTPGP_ALGORITHM_TYPE_SYMMETRIC_KEY,
+            src[0], &info
+          );
+
+          /* check for error */
+          if (err != PTPGP_OK)
+            return p->last_err = err;
+
+          /* save algorithm in packet and blcok size in context */
+          p->packet.packet.t5.symmetric_algorithm = src[0];
+          p->symmetric_block_size = info->symmetric_block_size;
+
+          /* clear buffer, shift input */
+          p->buf_len = 0;
+          SHIFT(1);
+
+          /* get s2k */
+          p->state = STATE(SECRET_KEY_S2K);
+          goto retry;
+        } while (0);
+
+        break;
+      case STATE(SECRET_KEY_S2K):
+        for (i = 0; i < src_len; i++) {
+          p->buf[p->buf_len++] = src[i];
+
+          if (
+            (p->buf_len ==  2 &&
+             p->buf[0] == PTPGP_S2K_ALGORITHM_TYPE_SIMPLE) ||
+            (p->buf_len == 10 &&
+             p->buf[0] == PTPGP_S2K_ALGORITHM_TYPE_SALTED) ||
+            (p->buf_len == 11 &&
+             p->buf[0] == PTPGP_S2K_ALGORITHM_TYPE_ITERATED_AND_SALTED)
+          ) {
+            ptpgp_err_t err;
+            u8 *salt = 0;
+            size_t count = 0;
+
+            switch (p->buf[0]) {
+            case PTPGP_S2K_ALGORITHM_TYPE_ITERATED_AND_SALTED:
+              count = PTPGP_S2K_COUNT_DECODE(p->buf[10]);
+              /* fall-through */
+            case PTPGP_S2K_ALGORITHM_TYPE_SALTED:
+              salt = p->buf + 2;
+              break;
+            case PTPGP_S2K_ALGORITHM_TYPE_SIMPLE:
+              /* do nothing */
+              break;
+            default:
+              /* never reached */
+              D("invalid s2k type =  %d", (int) p->buf[0]);
+              DIE(p, BAD_S2K_TYPE);
+            }
+
+            /* init s2k */
+            err = ptpgp_s2k_init(
+              &(p->packet.packet.t5.s2k),
+              p->buf[2], p->buf[3], salt, count
+            );
+
+            /* check for error */
+            if (err != PTPGP_OK) {
+              D("s2k init failed: %d", err);
+              return p->last_err = err;
+            }
+
+            /* clear buffer, shift input */
+            p->buf_len = 0;
+            SHIFT(i + 1);
+
+            /* read IV */
+            p->state = STATE(SECRET_KEY_IV);
+            goto retry;
+          } else if (p->buf_len > 11) {
+            /* corrupt packet */
+            D("s2k parse failed");
+            DIE(p, BAD_S2K_TYPE);
+          }
+        }
+        
+        break;
+      case STATE(SECRET_KEY_IV):
+        for (i = 0; i < src_len; i++) {
+          p->buf[p->buf_len++] = src[i];
+
+          if (p->buf_len == p->symmetric_block_size) {
+            memcpy(p->packet.packet.t5.iv, p->buf, p->symmetric_block_size);
+
+            SEND(p, SECRET_KEY_PACKET_HEADER, 0, 0);
+
+            p->buf_len = 0;
+            SHIFT(1);
+
+            p->state = STATE(MPI_LIST);
+            goto retry;
+          } else if (p->buf_len > p->symmetric_block_size) {
+            /* FIXME: corruption! */
+          }
+        }
+
+        break;
+      case STATE(SECRET_KEY_CHECKSUM):
+        for (i = 0; i < src_len; i++) {
+          p->buf[p->buf_len++] = src[i];
+
+          if ((p->buf_len == 2  && p->packet.packet.t5.key_usage != 254) ||
+              (p->buf_len == 20 && p->packet.packet.t5.key_usage == 254)) {
+            SEND(p, SECRET_KEY_PACKET_CHECKSUM, p->buf, p->buf_len);
+
+            /* clear buffer, shift input */
+            p->buf_len = 0;
+            SHIFT(1);
+
+            /* any packet data after this is an error */
+            p->state = STATE(LAST);
+            goto retry;
+          } else if (p->buf_len > 20) {
+            DIE(p, BAD_SECRET_KEY_CHECKSUM);
+          }
         }
 
         break;

@@ -50,6 +50,7 @@ static char *errors[] = {
   "invalid S2K type",
   "invalid MDC size (corrupt integrity)",
   "bad public key packet",
+  "bad secret key checksum",
 
   /* signature type errors */
   "unknown signature type",

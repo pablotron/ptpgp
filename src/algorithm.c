@@ -3,7 +3,8 @@
 #define T(s) PTPGP_ALGORITHM_TYPE_##s
 #define R(s) PTPGP_REQUIREMENT_##s
 
-#define F(k) { A(k), R(MUST_NOT), R(MUST_NOT), "Private/Experimental", 0, 0 }
+#define F(k) \
+  { A(k), R(MUST_NOT), R(MUST_NOT), "Private/Experimental", 0, 0, 0 }
 
 #define FOOTER \
   F(PRIVATE_100), \
@@ -22,55 +23,55 @@ static ptpgp_algorithm_info_t algos[] = {{
 /* algorithm types */
 #define A(a) T(ALGORITHM_TYPE), PTPGP_ALGORITHM_TYPE_##a
   A(ALGORITHM_TYPE),            R(MUST),      R(MUST),
-  "Algorithm Type",             NULL,         NULL
+  "Algorithm Type",             0,            0, 0
 }, {
   A(PUBLIC_KEY),                R(MUST),      R(MUST),
-  "Public Key Algorithm",       NULL,         NULL
+  "Public Key Algorithm",       0,            0, 0
 }, {
   A(SYMMETRIC_KEY),             R(MUST),      R(MUST),
-  "Symmetric Key Algorithm",    NULL,         NULL
+  "Symmetric Key Algorithm",    0,            0, 0
 }, {
   A(COMPRESSION),               R(MUST),      R(MUST),
-  "Compression Algorithm",      NULL,         NULL
+  "Compression Algorithm",      0,            0, 0
 }, {
   A(HASH),                      R(MUST),      R(MUST),
-  "Hash Algorithm",             NULL,         NULL
+  "Hash Algorithm",             0,            0, 0
 }, {
   A(S2K),                       R(MUST),      R(MUST),
-  "String-to-Key Specifier",    NULL,         NULL
+  "String-to-Key Specifier",    0,            0, 0
 }, {
 #undef A
 /* public key algorithms (rfc4880 9.1) */
 #define A(a) T(PUBLIC_KEY), PTPGP_PUBLIC_KEY_ALGORITHM_TYPE_##a
   A(RESERVED_0),                R(MUST_NOT),  R(MUST_NOT),
-  "Reserved",                   NULL,         NULL
+  "Reserved",                   0,            0, 0
 }, {
   A(RSA),                       R(SHOULD),    R(SHOULD),
-  "RSA",                        NULL,         NULL
+  "RSA",                        0,            2, 4
 }, {
   A(RSA_ENCRYPT_ONLY),          R(MAY),       R(SHOULD_NOT),
-  "RSA (Encrypt-Only)",         NULL,         NULL
+  "RSA (Encrypt-Only)",         0,            2, 4
 }, {
   A(RSA_SIGN_ONLY),             R(MAY),       R(SHOULD_NOT),
-  "RSA (Sign-Only)",            NULL,         NULL
+  "RSA (Sign-Only)",            0,            2, 4
 }, {
   A(ELGAMEL_ENCRYPT_ONLY),      R(MUST),      R(MUST),
-  "Elgamal (Encrypt-Only)",     NULL,         NULL
+  "Elgamal (Encrypt-Only)",     0,            3, 1
 }, {
   A(DSA),                       R(MUST),      R(MUST),
-  "DSA",                        NULL,         NULL
+  "DSA",                        0,            4, 1
 }, {
   A(EC),                        R(MUST_NOT),  R(MUST_NOT),
-  "Elliptic Curve (Reserved)",  NULL,         NULL
+  "Elliptic Curve (Reserved)",  0,            0, 0
 }, {
   A(ECDSA),                     R(MUST_NOT),  R(MUST_NOT),
-  "ECDSA (Reserved)",           NULL,         NULL
+  "ECDSA (Reserved)",           0,            0, 0
 }, {
   A(ELGAMAL_ENCRYPT_OR_SIGN),   R(MAY),       R(MUST_NOT),
-  "Elgamal (Deprecated)",       NULL,         NULL
+  "Elgamal (Deprecated)",       0,            3, 1
 }, {
   A(DH),                        R(MUST_NOT),  R(MUST_NOT),
-  "Diffie-Hellman",             NULL,         NULL
+  "Diffie-Hellman",             0,            0, 0
 }, FOOTER, {
 #undef A
 
@@ -78,46 +79,46 @@ static ptpgp_algorithm_info_t algos[] = {{
 /* symmetric key algorithms (rfc4880 9.2) */
 #define A(a) T(SYMMETRIC_KEY), PTPGP_SYMMETRIC_KEY_ALGORITHM_TYPE_##a
   A(PLAINTEXT),                 R(MUST),      R(MUST),
-  "Plaintext",                   NULL,         NULL
+  "Plaintext",                  0,            0, 0
 }, {
   A(IDEA),                      R(SHOULD),    R(SHOULD_NOT),
-  "IDEA",                       NULL,         NULL
+  "IDEA",                       64,           0, 0
 }, {
   A(TRIPLEDES),                 R(MUST),      R(MUST),
-  "TripleDES (DES-EDE)",        NULL,         NULL
+  "TripleDES (DES-EDE)",        64,           0, 0
 }, {
   A(CAST5),                     R(SHOULD),    R(SHOULD),
-  "CAST5 (128-bit)",            NULL,         NULL
+  "CAST5 (128-bit)",            64,           0, 0
 }, {
   A(BLOWFISH),                  R(MAY),       R(MAY),
-  "Blowfish (128-bit)",         NULL,         NULL
+  "Blowfish (128-bit)",         64,           0, 0
 }, {
   A(RESERVED_5),                R(MUST_NOT),  R(MUST_NOT),
-  "Reserved",                   NULL,         NULL
+  "Reserved",                   0,            0, 0
 }, {
   A(RESERVED_6),                R(MUST_NOT),  R(MUST_NOT),
-  "Reserved",                   NULL,         NULL
+  "Reserved",                   0,            0, 0
 }, {
   A(AES_128),                   R(SHOULD),    R(SHOULD),
-  "AES (128-bit)",              NULL,         NULL
+  "AES (128-bit)",              128,          0, 0
 }, {
   A(AES_192),                   R(MAY),       R(MAY),
-  "AES (192-bit)",              NULL,         NULL
+  "AES (192-bit)",              128,          0, 0
 }, {
   A(AES_256),                   R(MAY),       R(MAY),
-  "AES (256-bit)",              NULL,         NULL
+  "AES (256-bit)",              128,          0, 0
 }, {
   A(TWOFISH),                   R(MAY),       R(MAY),
-  "Twofish (256-bit)",          NULL,         NULL
+  "Twofish (256-bit)",          128,          0, 0
 }, {
   A(CAMELLIA_128),              R(MAY),       R(MAY),
-  "Camellia (128-bit)",         NULL,         NULL
+  "Camellia (128-bit)",         128,          0, 0
 }, {
   A(CAMELLIA_192),              R(MAY),       R(MAY),
-  "Camellia (192-bit)",         NULL,         NULL
+  "Camellia (192-bit)",         128,          0, 0
 }, {
   A(CAMELLIA_256),              R(MAY),       R(MAY),
-  "Camellia (256-bit)",         NULL,         NULL
+  "Camellia (256-bit)",         128,          0, 0
 }, FOOTER, {
 #undef A
 
@@ -125,16 +126,16 @@ static ptpgp_algorithm_info_t algos[] = {{
 /* compression algorithms (rfc4880 9.3) */
 #define A(a) T(COMPRESSION), PTPGP_COMPRESSION_ALGORITHM_TYPE_##a
   A(NONE),                      R(MUST),      R(MUST),
-  "Uncompressed",               NULL,         NULL
+  "Uncompressed",               0,            0, 0
 }, {
   A(ZIP),                       R(SHOULD),    R(SHOULD),
-  "ZIP (RFC1951)",              NULL,         NULL
+  "ZIP (RFC1951)",              0,            0, 0
 }, {
   A(ZLIB),                      R(MAY),       R(MAY),
-  "ZLIB (RFC1950)",             NULL,         NULL
+  "ZLIB (RFC1950)",             0,            0, 0
 }, {
   A(BZIP2),                     R(MAY),       R(MAY),
-  "BZip2",                      NULL,         NULL
+  "BZip2",                      0,            0, 0
 }, FOOTER, {
 #undef A
 
@@ -142,58 +143,59 @@ static ptpgp_algorithm_info_t algos[] = {{
 /* hash algorithms (rfc4880 9.4) */
 #define A(a) T(HASH), PTPGP_HASH_ALGORITHM_TYPE_##a
   A(RESERVED_0),                R(MUST_NOT),  R(MUST_NOT),
-  "Reserved",                   NULL,         NULL
+  "Reserved",                   0,            0, 0
 }, {
   A(MD5),                       R(SHOULD),    R(SHOULD_NOT),
-  "MD5 (Deprecated)",           NULL,         NULL
+  "MD5 (Deprecated)",           0,            0, 0
 }, {
   A(SHA1),                      R(MUST),      R(MUST),
-  "SHA-1",                      NULL,         NULL
+  "SHA-1",                      0,            0, 0
 }, {
   A(RIPEMD160),                 R(MAY),       R(MAY),
-  "RIPE-MD/160",                NULL,         NULL
+  "RIPE-MD/160",                0,            0, 0
 }, {
   A(RESERVED_4),                R(MUST_NOT),  R(MUST_NOT),
-  "Reserved",                   NULL,         NULL
+  "Reserved",                   0,            0, 0
 }, {
   A(RESERVED_5),                R(MUST_NOT),  R(MUST_NOT),
-  "Reserved",                   NULL,         NULL
+  "Reserved",                   0,            0, 0
 }, {
   A(RESERVED_6),                R(MUST_NOT),  R(MUST_NOT),
-  "Reserved",                   NULL,         NULL
+  "Reserved",                   0,            0, 0
 }, {
   A(RESERVED_7),                R(MUST_NOT),  R(MUST_NOT),
-  "Reserved",                   NULL,         NULL
+  "Reserved",                   0,            0, 0
 }, {
   A(SHA256),                    R(MAY),       R(MAY),
-  "SHA-256",                    NULL,         NULL
+  "SHA-256",                    0,            0, 0
 }, {
   A(SHA384),                    R(MAY),       R(MAY),
-  "SHA-384",                    NULL,         NULL
+  "SHA-384",                    0,            0, 0
 }, {
   A(SHA512),                    R(MAY),       R(MAY),
-  "SHA-512",                    NULL,         NULL
+  "SHA-512",                    0,            0, 0
 }, FOOTER, {
 #undef A
 
 /* s2k algorithms (rfc4880 3.7) */
 #define A(a) T(S2K), PTPGP_S2K_ALGORITHM_TYPE_##a
   A(SIMPLE),                    R(MUST),      R(SHOULD_NOT),
-  "Simple",                     NULL,         NULL
+  "Simple",                     0,            0, 0
 }, {
   A(SALTED),                    R(MUST),      R(MUST),
-  "Salted",                     NULL,         NULL
+  "Salted",                     0,            0, 0
 }, {
   A(RESERVED),                  R(MUST_NOT),  R(MUST_NOT),
-  "Reserved",                   NULL,         NULL
+  "Reserved",                   0,            0, 0
 }, {
   A(ITERATED_AND_SALTED),       R(MUST),      R(MUST),
-  "Iterated and Salted",        NULL,         NULL
+  "Iterated and Salted",        0,            0, 0
 }, FOOTER, {
 #undef A
 
   /* sentinel */
-  0, 0, 0, 0, 0, 0, 0
+  0, 0, 0, 0, 
+  0, 0, 0, 0
 }};
 
 ptpgp_err_t

@@ -110,7 +110,7 @@ typedef struct {
   uint32_t  creation_time;
 } ptpgp_packet_public_key_all_t;
 
-/* public key packet (t6, rfc4880 5.5.1.1) */
+/* public key packet (t6/t14, rfc4880 5.5.1.1/2 and 5.5.2) */
 typedef union {
   /* shared fields */
   ptpgp_packet_public_key_all_t all;
@@ -126,6 +126,26 @@ typedef union {
     ptpgp_packet_public_key_all_t all;
   } v4;
 } ptpgp_packet_public_key_t;
+
+/* public key packet (t5/t7, rfc4880 5.5.1.3/4 and 5.5.3) */
+typedef struct {
+  ptpgp_packet_public_key_t             public_key;
+
+  /* need this for parsing; otherwise there's no way to distinguish 
+   * an empty key usage from the public key portion (hack) */
+  bool                                  plaintext_secret_key;
+
+  u8                                    key_usage,
+                                        num_mpis,
+
+                                        /* sufficient for up to 256-bit
+                                         * block sizes */
+                                        iv[32];
+
+  ptpgp_symmetric_key_algorithm_type_t  symmetric_algorithm;
+  ptpgp_s2k_t                           s2k;
+
+} ptpgp_packet_private_key_t;
 
 typedef struct {
   ptpgp_tag_t tag;
@@ -143,7 +163,7 @@ typedef struct {
     ptpgp_packet_symmetric_key_encrypted_session_key_t    t3;
     ptpgp_packet_one_pass_signature_t                     t4;
 
-    ptpgp_packet_public_key_t                             t5;
+    ptpgp_packet_private_key_t                            t5;
     ptpgp_packet_public_key_t                             t6;
 
     ptpgp_packet_compressed_data_t                        t8;
