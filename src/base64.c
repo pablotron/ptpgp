@@ -12,11 +12,18 @@
 
 #define FLUSH(p) do {                                                 \
   if ((p)->out_buf_len > 0) {                                         \
-    D("sending %d bytes", (int) (p)->out_buf_len);                    \
+    /* null-terminate output buffer (for debugging) */                \
+    /* (p)->out_buf[(p)->out_buf_len] = 0; */                         \
+                                                                      \
+    /* D("sending %d bytes\nout_buf = %s",                            \
+      (int) (p)->out_buf_len, (p)->out_buf); */                       \
+                                                                      \
+    /* pass buffer to callback */                                     \
     ptpgp_err_t err = (p)->cb((p), (p)->out_buf, (p)->out_buf_len);   \
     if (err)                                                          \
       return (p)->last_err = err;                                     \
                                                                       \
+    /* clear output buffer */                                         \
     (p)->out_buf_len = 0;                                             \
   }                                                                   \
 } while (0)
@@ -27,6 +34,7 @@
   if ((p)->out_buf_len >= PTPGP_BASE64_OUT_BUF_SIZE - 2)              \
     FLUSH(p);                                                         \
                                                                       \
+  /* wrap encoded output lines at 60 characters */                    \
   if (FLAG_IS_SET(p, ENCODE) && (p)->line_len++ > 59) {               \
     (p)->out_buf[(p)->out_buf_len++] = '\n';                          \
     (p)->line_len = 0;                                                \
@@ -40,10 +48,22 @@
   (c) == '+' || (c) == '/' || (c) == '='                              \
 )
 
-static char *lut = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                   "abcdefghijklmnopqrstuvwxyz"
-                   "0123456789+/";
+static char *e_lut = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                     "abcdefghijklmnopqrstuvwxyz"
+                     "0123456789+/";
 
+static int d_lut[] = {
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+  -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63,
+  52, 53, 54, 55, 56, 57, 58, 59, 60, 61, -1, -1, -1, -1, -1, -1,
+  -1,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14,
+  15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, -1, -1, -1, -1, -1,
+  -1, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+  41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, -1, -1, -1, -1, -1
+};
+
+#if 0
 static u8
 decode(u8 c) {
   if (c >= 'A' && c <= 'Z')
@@ -60,6 +80,7 @@ decode(u8 c) {
   /* never reached */
   return 0xFF;
 }
+#endif /* 0 */
 
 #define BITS(n) ((1 << n) - 1)
 
@@ -74,23 +95,23 @@ convert(ptpgp_base64_t *p) {
 
   if (e) {
     if (l == 3) {
-      PUSH(p, lut[s[0] >> 2]);
-      PUSH(p, lut[((s[0] & 3) << 4)  | (s[1] >> 4)]);
-      PUSH(p, lut[((s[1] & 15) << 2) | (s[2] >> 6)]);
-      PUSH(p, lut[s[2] & 63]);
+      PUSH(p, e_lut[s[0] >> 2]);
+      PUSH(p, e_lut[((s[0] & 3) << 4)  | (s[1] >> 4)]);
+      PUSH(p, e_lut[((s[1] & 15) << 2) | (s[2] >> 6)]);
+      PUSH(p, e_lut[s[2] & 63]);
     } else if (l == 2) {
-      PUSH(p, lut[s[0] >> 2]);
-      PUSH(p, lut[((s[0] & 3) << 4) | (s[1] >> 4)]);
-      PUSH(p, lut[(s[1] & 15) << 2]);
+      PUSH(p, e_lut[s[0] >> 2]);
+      PUSH(p, e_lut[((s[0] & 3) << 4) | (s[1] >> 4)]);
+      PUSH(p, e_lut[(s[1] & 15) << 2]);
       PUSH(p, '=');
     } else if (l == 1) {
-      PUSH(p, lut[s[0] >> 2]);
-      PUSH(p, lut[(s[0] & 3) << 4]);
+      PUSH(p, e_lut[s[0] >> 2]);
+      PUSH(p, e_lut[(s[0] & 3) << 4]);
       PUSH(p, '=');
       PUSH(p, '=');
     }
   } else {
-    uint32_t a, b, c, d;
+    int a, b, c, d;
 
     /* valid base64 input should always be a multiple of 4 */
     if (l != 4)
@@ -100,28 +121,29 @@ convert(ptpgp_base64_t *p) {
     while (s[l - 1] == '=')
       l--;
 
+    /* check length and make sure there are no embedded '='s */
     if (l < 2 || s[0] == '=' || s[1] == '=')
       return PTPGP_ERR_BASE64_CORRUPT_INPUT;
 
     if (l == 4) {
-      a = decode(s[0]);
-      b = decode(s[1]);
-      c = decode(s[2]);
-      d = decode(s[3]);
+      a = d_lut[s[0]];
+      b = d_lut[s[1]];
+      c = d_lut[s[2]];
+      d = d_lut[s[3]];
 
       PUSH(p, (a << 2) | (b >> 4));
       PUSH(p, ((b & BITS(4)) << 4) | (c >> 2));
       PUSH(p, ((c & BITS(2)) << 6) | (d));
     } else if (l == 3) {
-      a = decode(s[0]);
-      b = decode(s[1]);
-      c = decode(s[2]);
+      a = d_lut[s[0]];
+      b = d_lut[s[1]];
+      c = d_lut[s[2]];
 
       PUSH(p, (a << 2) | (b >> 4));
       PUSH(p, ((b & BITS(4)) << 4) | (c >> 2));
     } else if (l == 2) { 
-      a = decode(s[0]);
-      b = decode(s[1]);
+      a = d_lut[s[0]];
+      b = d_lut[s[1]];
 
       PUSH(p, (a << 2) | (b >> 4));
     } else {
@@ -131,7 +153,6 @@ convert(ptpgp_base64_t *p) {
   }
 
   /* clear source buffer */
-  memset(p->src_buf, 0, 4);
   p->src_buf_len = 0;
 
   /* return success */
@@ -170,7 +191,7 @@ ptpgp_base64_push(ptpgp_base64_t *p, u8 *src, size_t src_len) {
     /* encode/decode remaining chunk (if necessary) */
     TRY(convert(p));
 
-    if (e)
+    if (e && p->line_len > 0)
       PUSH(p, '\n');
 
     /* flush remaining output */
@@ -181,27 +202,6 @@ ptpgp_base64_push(ptpgp_base64_t *p, u8 *src, size_t src_len) {
 
     /* return success */
     return PTPGP_OK;
-  }
-
-  if (p->src_buf_len > 0) {
-    /* calculate the number of bytes we need */
-    size_t num_bytes = (e ? 3 : 4) - p->src_buf_len;
-
-    if (num_bytes > src_len)
-      num_bytes = src_len;
-
-    memcpy(p->src_buf + p->src_buf_len, src, src_len);
-    p->src_buf_len += src_len;
-
-    /* shift input */
-    src += num_bytes;
-    src_len -= num_bytes;
-
-    if (p->src_buf_len == (e ? 3 : 4))
-      TRY(convert(p));
-
-    if (src_len == 0)
-      return PTPGP_OK;
   }
 
   for (i = 0; i < src_len; i++) {

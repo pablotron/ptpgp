@@ -57,8 +57,10 @@ typedef struct {
 static bool
 file_map(FILE *fh, file_map_t *r) {
   /* check for stdin */
-  if (fh == stdin)
+  if (fh == stdin) {
+    W("can't mmap() stdin");
     return 0;
+  }
 
   /* get file size */
   r->size = file_size(fh);

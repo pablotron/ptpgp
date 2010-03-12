@@ -1,6 +1,6 @@
 #!/bin/sh
 
-INC="-I../include -DPTPGP_DEBUG"
+INC="-I../include -DPTPGP_DEBUG -O2"
 # INC=-I../include
 TESTS="stream error armor base64"
 

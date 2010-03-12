@@ -49,6 +49,9 @@ dump(char *path, bool encode) {
     ptpgp_base64_done(&b),
     "finalize base64 context"
   );
+
+  /* flush standard output */
+  fflush(stdout);
 }
 
 
@@ -66,7 +69,7 @@ int main(int argc, char *argv[]) {
       print_usage_and_exit(argv[0], USAGE);
 
   /* get encode flag */
-  encode = IS_ENCODE(argv[1]);
+  encode = (argc > 1) && IS_ENCODE(argv[1]);
 
   /* dump file(s) */
   if (argc > 2) {
