@@ -8,4 +8,5 @@ test/error
 test/armor
 test/base64
 test/armor-encoder
+test/uri-parser
 src/inc

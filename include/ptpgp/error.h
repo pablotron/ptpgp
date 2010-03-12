@@ -82,6 +82,16 @@ typedef enum {
   PTPGP_ERR_ARMOR_ENCODER_MISSING_HEADER_VALUE, /* missing header value */
   PTPGP_ERR_ARMOR_ENCODER_ALREADY_DONE, /* armor encoder context already done */
 
+  /* uri parser errors */
+  PTPGP_ERR_URI_PARSER_ALREADY_DONE, /* unknown state (memory corruption?) */
+  PTPGP_ERR_URI_PARSER_UNKNOWN_STATE, /* unknown state (memory corruption?) */
+  PTPGP_ERR_URI_PARSER_MISSING_SCHEME, /* unspecified URI scheme */
+  PTPGP_ERR_URI_PARSER_DUPLICATE_AUTH, /* duplicate authspecs in URI */
+  PTPGP_ERR_URI_PARSER_HOST_TOO_LONG, /* host portion of URI too long */
+  PTPGP_ERR_URI_PARSER_PATH_TOO_LONG, /* path portion of URI too long */
+  PTPGP_ERR_URI_PARSER_QUERY_TOO_LONG, /* query portion of URI too long */
+  PTPGP_ERR_URI_PARSER_FRAGMENT_TOO_LONG, /* fragment portion of URI too long */
+
   /* sentinel */
   PTPGP_ERR_LAST
 } ptpgp_err_t;

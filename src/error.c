@@ -84,6 +84,16 @@ static char *errors[] = {
   "missing header value",
   "armor encoder context already done",
 
+  /* uri parser errors */
+  "URI parser already done",
+  "unknown state (memory corruption?)",
+  "unspecified URI scheme",
+  "duplicate authspecs in URI",
+  "host portion of URI too long",
+  "path portion of URI too long",
+  "query portion of URI too long",
+  "fragment portion of URI too long",
+
   /* sentinel */
   NULL
 };
