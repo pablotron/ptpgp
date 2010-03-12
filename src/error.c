@@ -49,6 +49,7 @@ static char *errors[] = {
   "invalid subpacket header",
   "invalid S2K type",
   "invalid MDC size (corrupt integrity)",
+  "bad public key packet",
 
   /* signature type errors */
   "unknown signature type",
@@ -93,6 +94,9 @@ static char *errors[] = {
   "path portion of URI too long",
   "query portion of URI too long",
   "fragment portion of URI too long",
+
+  /* public key algorithm errors */
+  "unknown or unsupported public key algorithm",
 
   /* sentinel */
   NULL

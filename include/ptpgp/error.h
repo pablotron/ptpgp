@@ -47,6 +47,7 @@ typedef enum {
   PTPGP_ERR_PACKET_PARSER_INVALID_SUBPACKET_HEADER, /* invalid subpacket header */
   PTPGP_ERR_PACKET_PARSER_BAD_S2K_TYPE, /* invalid S2K type */
   PTPGP_ERR_PACKET_PARSER_BAD_MDC_SIZE, /* invalid MDC size */
+  PTPGP_ERR_PACKET_PARSER_BAD_PUBLIC_KEY_PACKET, /* bad public key packet */
 
   /* signature type errors */
   PTPGP_ERR_SIGNATURE_TYPE_UNKNOWN_TYPE, /* unknown signature type */
@@ -91,6 +92,9 @@ typedef enum {
   PTPGP_ERR_URI_PARSER_PATH_TOO_LONG, /* path portion of URI too long */
   PTPGP_ERR_URI_PARSER_QUERY_TOO_LONG, /* query portion of URI too long */
   PTPGP_ERR_URI_PARSER_FRAGMENT_TOO_LONG, /* fragment portion of URI too long */
+
+  /* public key algorithm errors */
+  PTPGP_ERR_PUBLIC_KEY_ALGORITHM_NOT_FOUND, /* unknown public key algorithm */
 
   /* sentinel */
   PTPGP_ERR_LAST
