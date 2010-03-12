@@ -783,6 +783,128 @@ retry:
       }
 
       break;
+    /* public-key/subkey packet (t6, rfc4880 5.5.1.1/5.5.1.2) */
+    case PTPGP_TAG_PUBLIC_KEY:
+    case PTPGP_TAG_PUBLIC_SUBKEY:
+      switch (p->state) {
+      case STATE(INIT):
+        for (i = 0; i < src_len; i++) {
+          p->buf[p->buf_len++] = src[i];
+
+          if (p->buf_len > 4) {
+            ptpgp_err_t err;
+            ptpgp_public_key_algorithm_info_t *info;
+
+            if (p->buf_len == 5) {
+              /* populate shared fields */
+              p->packet.packet.t6.all.version = p->buf[0];
+              p->packet.packet.t6.all.creation_time = (p->buf[1] << 24) |
+                                                      (p->buf[2] << 16) |
+                                                      (p->buf[3] <<  8) |
+                                                      (p->buf[4]);
+            } else if ((p->buf_len == 8 && p->buf[0] == 3) ||
+                       (p->buf_len == 6 && p->buf[0] == 4)) {
+              if (p->buf[0] == 3) {
+                p->packet.packet.t6.v3.valid_days = (p->buf[5] << 8) |
+                                                    (p->buf[6]);
+                p->packet.packet.t6.all.public_key_algorithm = p->buf[7];
+              } else {
+                p->packet.packet.t6.all.public_key_algorithm = p->buf[5];
+              }
+
+              /* get public key algorithm info */
+              err = ptpgp_public_key_algorithm_info(
+                p->packet.packet.t6.all.public_key_algorithm,
+                &info
+              );
+
+              /* check for error */
+              if (err != PTPGP_OK)
+                return p->last_err = err;
+
+              /* get num remaining mpis */
+              p->packet.packet.t6.all.num_mpis = info->num_key_packet_mpis;
+
+              /* send packet info */
+              if (p->packet.tag == PTPGP_TAG_PUBLIC_KEY)
+                SEND(p, PUBLIC_KEY, 0, 0);
+              else
+                SEND(p, PUBLIC_SUBKEY, 0, 0);
+
+              p->buf_len = 0;
+              SHIFT(i + i);
+
+              p->state = STATE(MPI_LIST);
+              goto retry;
+            } else if (p->buf_len > 8) {
+              DIE(p, BAD_PUBLIC_KEY_PACKET);
+            }
+          }
+        }
+
+        break;
+      case STATE(MPI_LIST):
+        for (i = 0; i < src_len; i++) {
+          p->buf[p->buf_len++] = src[i];
+
+          if (p->buf_len == 2) {
+            size_t num_bits = (p->buf[0] << 8) | p->buf[1];
+
+            p->remaining_bytes = (num_bits + 7) / 8;
+
+            /* send packet */
+            SEND(p, MPI_START, (u8*) &(num_bits), sizeof(size_t));
+
+            /* clear buffer */
+            p->buf_len = 0;
+            SHIFT(i + 1);
+
+            /* switch state */
+            p->state = STATE(MPI_BODY);
+            goto retry;
+          }
+        }
+
+        break;
+      case STATE(MPI_BODY):
+        if (src_len < p->remaining_bytes) {
+          /* send mpi body fragment */
+          if (src_len > 0) {
+            SEND(p, MPI_BODY, src, src_len);
+            p->remaining_bytes -= src_len;
+          }
+
+          /* return success */
+          return PTPGP_OK;
+        } else {
+          /* send final mpi body fragment and end notice */
+          if (p->remaining_bytes > 0) {
+            SEND(p, MPI_BODY, src, p->remaining_bytes);
+            SHIFT(p->remaining_bytes);
+          }
+
+          /* send end notice */
+          SEND(p, MPI_END, 0, 0);
+
+          /* decriment mpi count */
+          p->packet.packet.t6.all.num_mpis--;
+
+          /* switch state */
+          if (p->packet.packet.t6.all.num_mpis > 0)
+            p->state = STATE(MPI_LIST);
+          else
+            /* any additional data is an error */
+            p->state = STATE(LAST);
+          goto retry;
+        }
+
+        break;
+      default:
+        /* if we reach here, it's an error */
+        DIE(p, INVALID_STATE);
+      }
+
+      break;
     default:
       /* pass the raw packet data for unsupported packets */
       switch (p->state) {

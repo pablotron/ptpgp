@@ -104,6 +104,30 @@ typedef struct {
 } ptpgp_packet_sym_encrypted_integrity_protected_data_t;
 
 typedef struct {
+  u8        version,
+            public_key_algorithm,
+            num_mpis;
+  uint32_t  creation_time;
+} ptpgp_packet_public_key_all_t;
+
+/* public key packet (t6, rfc4880 5.5.1.1) */
+typedef union {
+  /* shared fields */
+  ptpgp_packet_public_key_all_t all;
+
+  /* v3 fields */
+  struct {
+    ptpgp_packet_public_key_all_t all;
+    uint32_t                      valid_days;
+  } v3;
+
+  /* v4 fields (none) */
+  struct {
+    ptpgp_packet_public_key_all_t all;
+  } v4;
+} ptpgp_packet_public_key_t;
+
+typedef struct {
   ptpgp_tag_t tag;
   u8 *data;
   size_t data_len;
@@ -119,7 +143,8 @@ typedef struct {
     ptpgp_packet_symmetric_key_encrypted_session_key_t    t3;
     ptpgp_packet_one_pass_signature_t                     t4;
 
-    /* TODO: pk public/private packets/subpackets */
+    ptpgp_packet_public_key_t                             t5;
+    ptpgp_packet_public_key_t                             t6;
 
     ptpgp_packet_compressed_data_t                        t8;
     ptpgp_packet_symmetrically_encrypted_data_t           t9;
