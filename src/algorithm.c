@@ -146,13 +146,13 @@ static ptpgp_algorithm_info_t algos[] = {{
   "Reserved",                   0,            0, 0
 }, {
   A(MD5),                       R(SHOULD),    R(SHOULD_NOT),
-  "MD5 (Deprecated)",           0,            0, 0
+  "MD5 (Deprecated)",           128,          0, 0
 }, {
   A(SHA1),                      R(MUST),      R(MUST),
-  "SHA-1",                      0,            0, 0
+  "SHA-1",                      160,          0, 0
 }, {
   A(RIPEMD160),                 R(MAY),       R(MAY),
-  "RIPE-MD/160",                0,            0, 0
+  "RIPE-MD/160",                160,          0, 0
 }, {
   A(RESERVED_4),                R(MUST_NOT),  R(MUST_NOT),
   "Reserved",                   0,            0, 0
@@ -167,13 +167,13 @@ static ptpgp_algorithm_info_t algos[] = {{
   "Reserved",                   0,            0, 0
 }, {
   A(SHA256),                    R(MAY),       R(MAY),
-  "SHA-256",                    0,            0, 0
+  "SHA-256",                    256,          0, 0
 }, {
   A(SHA384),                    R(MAY),       R(MAY),
-  "SHA-384",                    0,            0, 0
+  "SHA-384",                    384,          0, 0
 }, {
   A(SHA512),                    R(MAY),       R(MAY),
-  "SHA-512",                    0,            0, 0
+  "SHA-512",                    512,          0, 0
 }, FOOTER, {
 #undef A
 
