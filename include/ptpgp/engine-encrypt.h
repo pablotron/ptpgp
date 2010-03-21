@@ -3,7 +3,15 @@
 /* FIXME: move this elsewhere */
 typedef enum {
   PTPGP_SYMMETRIC_MODE_NONE,
-  PTPGP_SYMMETRIC_MODE_LAST,
+  PTPGP_SYMMETRIC_MODE_ECB,
+  PTPGP_SYMMETRIC_MODE_CFB,
+  PTPGP_SYMMETRIC_MODE_CBC,
+  PTPGP_SYMMETRIC_MODE_OFB,
+
+  /* XXX: do i need this? */
+  PTPGP_SYMMETRIC_MODE_STREAM,
+
+  PTPGP_SYMMETRIC_MODE_LAST
 } ptpgp_symmetric_mode_type_t;
 
 typedef ptpgp_err_t (*ptpgp_encrypt_context_cb_t)(ptpgp_encrypt_context_t *,

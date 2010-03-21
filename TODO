@@ -1,2 +1,3 @@
 [ ] u8 => uint8_t
-[ ] 
+[ ] algorithm => type (.h and defines)
+[ ] move symmetric modes to algorithm/type

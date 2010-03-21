@@ -29,6 +29,7 @@ extern "C" {
 #include <ptpgp/base64.h>
 
 #include <ptpgp/engine-structs.h>
+#include <ptpgp/engine-hash.h>
 #include <ptpgp/engine-encrypt.h>
 #include <ptpgp/engine.h>
 #include <ptpgp/openssl.h>

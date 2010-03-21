@@ -97,6 +97,16 @@ typedef enum {
   /* public key algorithm errors */
   PTPGP_ERR_PUBLIC_KEY_ALGORITHM_NOT_FOUND, /* unknown public key algorithm */
 
+  /* engine errors */
+  PTPGP_ERR_ENGINE_INIT_FAILED, /* couldn't initialize crypto engine */
+
+  /* engine-hash errors */
+  PTPGP_ERR_ENGINE_HASH_INIT_FAILED, /* hash context init failed */
+  PTPGP_ERR_ENGINE_HASH_DONE_FAILED, /* couldn't finalize hash context */
+  PTPGP_ERR_ENGINE_HASH_CONTEXT_ALREADY_DONE, /* hash context already done */
+  PTPGP_ERR_ENGINE_HASH_CONTEXT_NOT_DONE, /* hash context not done */
+  PTPGP_ERR_ENGINE_HASH_OUTPUT_BUFFER_TOO_SMALL, /* hash output buffer too small */
+
   /* sentinel */
   PTPGP_ERR_LAST
 } ptpgp_err_t;

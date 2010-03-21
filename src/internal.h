@@ -1,5 +1,8 @@
 #include <string.h> /* for memset()/memcmp() */
+#include <strings.h> /* for strncasecmp() */
 #include <ptpgp/ptpgp.h>
+
+#define UNUSED(a) ((void) (a))
 
 #ifdef PTPGP_DEBUG
 #include <stdio.h>

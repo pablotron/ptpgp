@@ -99,6 +99,16 @@ static char *errors[] = {
   /* public key algorithm errors */
   "unknown or unsupported public key algorithm",
 
+  /* engine errors */
+  "couldn't initialize crypto engine",
+
+  /* engine-hash errors */
+  "hash context init failed",
+  "couldn't finalize hash context",
+  "hash context already done",
+  "hash context not done",
+  "hash output buffer too small",
+
   /* sentinel */
   NULL
 };

@@ -55,7 +55,8 @@ typedef struct {
   ptpgp_requirement_t    interpret,
                          generate;
 
-  char                  *name;
+  char                  *name, 
+                        *key;
 
   /* algorithm-specific numbers */
   uint32_t               symmetric_block_size,
@@ -156,5 +157,10 @@ ptpgp_err_t
 ptpgp_algorithm_info(ptpgp_algorithm_type_t, 
                      uint32_t, 
                      ptpgp_algorithm_info_t **);
+
+ptpgp_err_t 
+ptpgp_algorithm_find(ptpgp_algorithm_type_t,
+                     char *,
+                     uint32_t *);
 
 #undef FOOTER
