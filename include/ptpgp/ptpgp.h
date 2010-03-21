@@ -19,12 +19,21 @@ extern "C" {
 
 #include <ptpgp/error.h>
 #include <ptpgp/util.h>
+
 #include <ptpgp/tag.h>
 #include <ptpgp/algorithm.h>
 #include <ptpgp/key-flag.h>
+
 #include <ptpgp/s2k.h>
 #include <ptpgp/crc24.h>
 #include <ptpgp/base64.h>
+
+#include <ptpgp/engine-structs.h>
+#include <ptpgp/engine-encrypt.h>
+#include <ptpgp/engine.h>
+#include <ptpgp/openssl.h>
+#include <ptpgp/gcrypt.h>
+
 #include <ptpgp/packet-header.h>
 #include <ptpgp/uri-parser.h>
 #include <ptpgp/stream-parser.h>
