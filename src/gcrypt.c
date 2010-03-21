@@ -2,6 +2,8 @@
 #include "internal.h"
 #include <gcrypt.h>
 
+#define GCRYPT_OK GPG_ERR_NO_ERROR
+
 /****************/
 /* hash methods */
 /****************/
@@ -30,10 +32,10 @@ hash_init(ptpgp_hash_context_t *c) {
   int a = get_hash_algorithm(c->algorithm);
   gcry_md_hd_t h;
 
-  /* XXX: should we try and allocate with secure memory here? */
+  /* TODO: handle secure memory */
 
   /* init hash context, check for error */
-  if (gcry_md_open(&h, a, 0) != GPG_ERR_NO_ERROR)
+  if (gcry_md_open(&h, a, 0) != GCRYPT_OK)
     return PTPGP_ERR_ENGINE_HASH_INIT_FAILED;
 
   /* save hash context */
@@ -76,35 +78,131 @@ hash_done(ptpgp_hash_context_t *c) {
 /********************************/
 /* symmetric encryption methods */
 /********************************/
+static int
+get_symmetric_algorithm(ptpgp_symmetric_key_algorithm_type_t t) {
+  switch (t) {
+  case PTPGP_SYMMETRIC_KEY_ALGORITHM_TYPE_PLAINTEXT:
+    return GCRY_CIPHER_NONE;
+  case PTPGP_SYMMETRIC_KEY_ALGORITHM_TYPE_IDEA:
+    return GCRY_CIPHER_IDEA;
+  case PTPGP_SYMMETRIC_KEY_ALGORITHM_TYPE_TRIPLEDES:
+    return GCRY_CIPHER_3DES;
+  case PTPGP_SYMMETRIC_KEY_ALGORITHM_TYPE_CAST5:
+    return GCRY_CIPHER_CAST5;
+  case PTPGP_SYMMETRIC_KEY_ALGORITHM_TYPE_BLOWFISH:
+    return GCRY_CIPHER_BLOWFISH;
+  case PTPGP_SYMMETRIC_KEY_ALGORITHM_TYPE_AES_128:
+    return GCRY_CIPHER_AES128;
+  case PTPGP_SYMMETRIC_KEY_ALGORITHM_TYPE_AES_192:
+    return GCRY_CIPHER_AES192;
+  case PTPGP_SYMMETRIC_KEY_ALGORITHM_TYPE_AES_256:
+    return GCRY_CIPHER_AES256;
+  case PTPGP_SYMMETRIC_KEY_ALGORITHM_TYPE_TWOFISH:
+    return GCRY_CIPHER_TWOFISH;
+  case PTPGP_SYMMETRIC_KEY_ALGORITHM_TYPE_CAMELLIA_128:
+    return GCRY_CIPHER_CAMELLIA128;
+  case PTPGP_SYMMETRIC_KEY_ALGORITHM_TYPE_CAMELLIA_192:
+    return GCRY_CIPHER_CAMELLIA192;
+  case PTPGP_SYMMETRIC_KEY_ALGORITHM_TYPE_CAMELLIA_256:
+    return GCRY_CIPHER_CAMELLIA256;
+  default:
+    return -1;
+  }
+}
+
+static int
+get_symmetric_mode(ptpgp_symmetric_mode_type_t t) {
+  switch (t) {
+  case PTPGP_SYMMETRIC_MODE_NONE:
+    return GCRY_CIPHER_MODE_NONE;
+  case PTPGP_SYMMETRIC_MODE_ECB:
+    return GCRY_CIPHER_MODE_ECB;
+  case PTPGP_SYMMETRIC_MODE_CFB:
+    return GCRY_CIPHER_MODE_CFB;
+  case PTPGP_SYMMETRIC_MODE_CBC:
+    return GCRY_CIPHER_MODE_CBC;
+  case PTPGP_SYMMETRIC_MODE_OFB:
+    return GCRY_CIPHER_MODE_OFB;
+  case PTPGP_SYMMETRIC_MODE_CTR:
+    return GCRY_CIPHER_MODE_CTR;
+  case PTPGP_SYMMETRIC_MODE_STREAM:
+    return GCRY_CIPHER_MODE_STREAM;
+  case PTPGP_SYMMETRIC_MODE_LAST:
+  default:
+    return -1;
+  }
+}
 
 static ptpgp_err_t 
 encrypt_init(ptpgp_encrypt_context_t *c) {
-  UNUSED(c);
+  int a = get_symmetric_algorithm(c->options.algorithm),
+      m = get_symmetric_mode(c->options.mode);
+  gcry_cipher_hd_t h;
 
-  /* TODO */
+  /* TODO: handle secure memory */
 
+  /* init cipher context */
+  if (gcry_cipher_open(&h, a, m, 0) != GCRYPT_OK)
+    return PTPGP_ERR_ENGINE_ENCRYPT_INIT_FAILED;
+
+  /* set iv */
+  if (gcry_cipher_setiv(h, c->options.iv, c->options.iv_len) != GCRYPT_OK)
+    return PTPGP_ERR_ENGINE_ENCRYPT_INIT_IV_FAILED;
+
+
+  /* set key */
+  if (gcry_cipher_setkey(h, c->options.key, c->options.key_len) != GCRYPT_OK)
+    return PTPGP_ERR_ENGINE_ENCRYPT_INIT_KEY_FAILED;
+
+  /* TODO: handle counter for ctr mode */
+
+  /* save cipher context */
+  c->engine_data = (void*) h;
+
+  /* return success */
   return PTPGP_OK;
 }
+
+#define BUF_SIZE PTPGP_ENCRYPT_CONTEXT_BUFFER_SIZE
 
 static ptpgp_err_t 
 encrypt_push(ptpgp_encrypt_context_t *c, 
              u8 *src,
              size_t src_len) {
-  UNUSED(c);
-  UNUSED(src);
-  UNUSED(src_len);
+  gcry_cipher_hd_t h = (gcry_cipher_hd_t) c->engine_data;
+  gcry_error_t err;
+  size_t len;
 
-  /* TODO */
+  while (src_len > 0) {
+    /* get length */
+    /* XXX: should we enforce block constraints here? */
+    len = (src_len < BUF_SIZE) ? src_len : BUF_SIZE;
 
+    /* encrypt/decrypt data */
+    if (c->options.encrypt)
+      err = gcry_cipher_encrypt(h, c->buf, BUF_SIZE, src, len);
+    else
+      err = gcry_cipher_decrypt(h, c->buf, BUF_SIZE, src, len);
+
+    /* check for gcrypt error */
+    if (err != GCRYPT_OK)
+      return PTPGP_ERR_ENGINE_ENCRYPT_PUSH_FAILED;
+
+    /* pass data to callback */
+    TRY(c->options.cb(c, c->buf, len));
+
+    /* shift input */
+    src += len;
+    src_len -= len;
+  }
+
+  /* return success */
   return PTPGP_OK;
 }
 
 static ptpgp_err_t 
 encrypt_done(ptpgp_encrypt_context_t *c) {
-  UNUSED(c);
-
-  /* TODO */
-
+  gcry_cipher_close((gcry_cipher_hd_t) c->engine_data);
   return PTPGP_OK;
 }
 

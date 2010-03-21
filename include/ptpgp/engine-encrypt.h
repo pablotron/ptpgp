@@ -7,12 +7,15 @@ typedef enum {
   PTPGP_SYMMETRIC_MODE_CFB,
   PTPGP_SYMMETRIC_MODE_CBC,
   PTPGP_SYMMETRIC_MODE_OFB,
+  PTPGP_SYMMETRIC_MODE_CTR,
 
   /* XXX: do i need this? */
   PTPGP_SYMMETRIC_MODE_STREAM,
 
   PTPGP_SYMMETRIC_MODE_LAST
 } ptpgp_symmetric_mode_type_t;
+
+#define PTPGP_ENCRYPT_CONTEXT_BUFFER_SIZE 1024
 
 typedef ptpgp_err_t (*ptpgp_encrypt_context_cb_t)(ptpgp_encrypt_context_t *,
                                                   u8 *, size_t);
@@ -38,7 +41,9 @@ typedef struct {
 } ptpgp_encrypt_options_t;
 
 struct ptpgp_encrypt_context_t_ {
-  void                    *engine_data;
+  void *engine_data;
+  u8 buf[PTPGP_ENCRYPT_CONTEXT_BUFFER_SIZE];
+  size_t buf_len;
   ptpgp_encrypt_options_t  options;
 };
 

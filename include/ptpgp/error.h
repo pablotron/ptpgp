@@ -108,6 +108,13 @@ typedef enum {
   PTPGP_ERR_ENGINE_HASH_CONTEXT_NOT_DONE, /* hash context not done */
   PTPGP_ERR_ENGINE_HASH_OUTPUT_BUFFER_TOO_SMALL, /* hash output buffer too small */
 
+  /* engine-encrypt errors */
+  PTPGP_ERR_ENGINE_ENCRYPT_INIT_FAILED, /* symmetric encryption context init failed */
+  PTPGP_ERR_ENGINE_ENCRYPT_INIT_KEY_FAILED, /* couldn't set symmetric key */
+  PTPGP_ERR_ENGINE_ENCRYPT_INIT_IV_FAILED, /* couldn't set initialization vector */
+  PTPGP_ERR_ENGINE_ENCRYPT_PUSH_FAILED, /* push failed */
+  PTPGP_ERR_ENGINE_ENCRYPT_DONE_FAILED, /* couldn't finalize symmetric encryption context */
+
   /* sentinel */
   PTPGP_ERR_LAST
 } ptpgp_err_t;

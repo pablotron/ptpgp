@@ -110,6 +110,13 @@ static char *errors[] = {
   "hash context not done",
   "hash output buffer too small",
 
+  /* engine-encrypt errors */
+  "symmetric encryption context init failed",
+  "couldn't set symmetric key",
+  "couldn't set initialization vector",
+  "push failed",
+  "couldn't finalize symmetric encryption context",
+
   /* sentinel */
   NULL
 };
