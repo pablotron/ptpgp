@@ -11,4 +11,5 @@ test/armor-encoder
 test/uri-parser
 test/gcrypt-hash
 test/openssl-hash
+test/gcrypt-encrypt
 src/inc
