@@ -21,7 +21,7 @@ extern "C" {
 #include <ptpgp/util.h>
 
 #include <ptpgp/tag.h>
-#include <ptpgp/algorithm.h>
+#include <ptpgp/type.h>
 #include <ptpgp/key-flag.h>
 
 #include <ptpgp/s2k.h>
