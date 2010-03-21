@@ -9,5 +9,5 @@ test/armor
 test/base64
 test/armor-encoder
 test/uri-parser
-test/gcrypt-has
+test/gcrypt-hash
 src/inc
