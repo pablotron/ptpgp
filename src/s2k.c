@@ -2,8 +2,8 @@
 
 ptpgp_err_t
 ptpgp_s2k_init(ptpgp_s2k_t *r,
-               ptpgp_s2k_algorithm_type_t t,
-               ptpgp_hash_algorithm_type_t h,
+               ptpgp_s2k_type_t t,
+               ptpgp_hash_type_t h,
                u8 *salt,
                uint32_t count) {
   /* clear result */
@@ -15,8 +15,8 @@ ptpgp_s2k_init(ptpgp_s2k_t *r,
   r->algorithm = h;
   r->count = count;
 
-  if (t == PTPGP_S2K_ALGORITHM_TYPE_SALTED ||
-      t == PTPGP_S2K_ALGORITHM_TYPE_ITERATED_AND_SALTED) {
+  if (t == PTPGP_S2K_TYPE_SALTED ||
+      t == PTPGP_S2K_TYPE_ITERATED_AND_SALTED) {
     /* make sure salt is defined */
     if (!salt)
       return PTPGP_ERR_S2K_MISSING_SALT;
@@ -42,8 +42,8 @@ ptpgp_s2k_to_s(ptpgp_s2k_t *r,
   l = 0;
 
   /* get s2k type */
-  err = ptpgp_algorithm_to_s(
-    PTPGP_ALGORITHM_TYPE_S2K,
+  err = ptpgp_type_to_s(
+    PTPGP_TYPE_S2K,
     r->type,
     (u8*) tmp, sizeof(tmp),
     NULL
@@ -61,8 +61,8 @@ ptpgp_s2k_to_s(ptpgp_s2k_t *r,
   );
 
   /* get hash type */
-  err = ptpgp_algorithm_to_s(
-    PTPGP_ALGORITHM_TYPE_HASH,
+  err = ptpgp_type_to_s(
+    PTPGP_TYPE_HASH,
     r->algorithm,
     (u8*) tmp, sizeof(tmp),
     NULL
@@ -79,8 +79,8 @@ ptpgp_s2k_to_s(ptpgp_s2k_t *r,
     r->algorithm, tmp
   );
 
-  if (r->type == PTPGP_S2K_ALGORITHM_TYPE_SALTED ||
-      r->type == PTPGP_S2K_ALGORITHM_TYPE_ITERATED_AND_SALTED) {
+  if (r->type == PTPGP_S2K_TYPE_SALTED ||
+      r->type == PTPGP_S2K_TYPE_ITERATED_AND_SALTED) {
     /* convert salt to hex */
     err = ptpgp_to_hex(r->salt, 8, (u8*) tmp, sizeof(tmp));
 
@@ -93,7 +93,7 @@ ptpgp_s2k_to_s(ptpgp_s2k_t *r,
     l += snprintf(buf + l, sizeof(buf) - l, ",\"salt\":\"%s\"", tmp);
 
     /* append count to output */
-    if (r->type == PTPGP_S2K_ALGORITHM_TYPE_ITERATED_AND_SALTED)
+    if (r->type == PTPGP_S2K_TYPE_ITERATED_AND_SALTED)
       l += snprintf(buf + l, sizeof(buf) - l, ",count:%d", r->count);
   }
 

@@ -62,9 +62,9 @@ typedef enum {
   PTPGP_ERR_SIGNATURE_SUBPACKET_PARSER_ALREADY_DONE, /* signature subpacket parser already done */
   PTPGP_ERR_SIGNATURE_SUBPACKET_PARSER_INPUT_BUFFER_OVERFLOW, /* input buffer overflow (bug?) */
 
-  /* algorithm type errors */
-  PTPGP_ERR_ALGORITHM_UNKNOWN, /* unknown algorithm */
-  PTPGP_ERR_ALGORITHM_DEST_BUFFER_TOO_SMALL, /* output buffer too small */
+  /* type errors */
+  PTPGP_ERR_TYPE_UNKNOWN, /* unknown algorithm */
+  PTPGP_ERR_TYPE_DEST_BUFFER_TOO_SMALL, /* output buffer too small */
 
   /* s2k errors */
   PTPGP_ERR_S2K_MISSING_SALT, /* S2K salt is NULL */

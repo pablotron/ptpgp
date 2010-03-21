@@ -503,7 +503,7 @@ retry:
       break;
 
     /* symmetric-key encrypted session key packet (t3, rfc4880 5.3) */
-    case PTPGP_TAG_SYMMETRIC_KEY_ENCRYPTED_SESSION_KEY:
+    case PTPGP_TAG_SYMMETRIC_ENCRYPTED_SESSION_KEY:
       switch (p->state) {
       case STATE(INIT):
         for (i = 0; i < src_len; i++) {
@@ -521,30 +521,30 @@ retry:
             p->packet.packet.t3.algorithm = p->buf[1];
           } else if (
             (p->buf_len == 4 &&
-             p->buf[2] == PTPGP_S2K_ALGORITHM_TYPE_SIMPLE) ||
+             p->buf[2] == PTPGP_S2K_TYPE_SIMPLE) ||
             (p->buf_len == 12 &&
-             p->buf[2] == PTPGP_S2K_ALGORITHM_TYPE_SALTED) ||
+             p->buf[2] == PTPGP_S2K_TYPE_SALTED) ||
             (p->buf_len == 13 &&
-             p->buf[2] == PTPGP_S2K_ALGORITHM_TYPE_ITERATED_AND_SALTED)
+             p->buf[2] == PTPGP_S2K_TYPE_ITERATED_AND_SALTED)
           ) {
             ptpgp_err_t err;
 
             switch (p->buf[2]) {
-            case PTPGP_S2K_ALGORITHM_TYPE_SIMPLE:
+            case PTPGP_S2K_TYPE_SIMPLE:
               err = ptpgp_s2k_init(
                 &(p->packet.packet.t3.s2k),
                 p->buf[2], p->buf[3], 0, 0
               );
 
               break;
-            case PTPGP_S2K_ALGORITHM_TYPE_SALTED:
+            case PTPGP_S2K_TYPE_SALTED:
               err = ptpgp_s2k_init(
                 &(p->packet.packet.t3.s2k),
                 p->buf[2], p->buf[3], p->buf + 4, 0
               );
 
               break;
-            case PTPGP_S2K_ALGORITHM_TYPE_ITERATED_AND_SALTED:
+            case PTPGP_S2K_TYPE_ITERATED_AND_SALTED:
               err = ptpgp_s2k_init(
                 &(p->packet.packet.t3.s2k),
                 p->buf[2], p->buf[3], p->buf + 4,
@@ -562,7 +562,7 @@ retry:
               return p->last_err = err;
             }
 
-            SEND(p, SYMMETRIC_KEY_ENCRYPTED_SESSION_KEY, 0, 0);
+            SEND(p, SYMMETRIC_ENCRYPTED_SESSION_KEY, 0, 0);
 
             p->buf_len = 0;
             SHIFT(i + 1);
@@ -799,7 +799,7 @@ retry:
 
           if (p->buf_len > 4) {
             ptpgp_err_t err;
-            ptpgp_algorithm_info_t *info;
+            ptpgp_type_info_t *info;
 
             if (p->buf_len == 5) {
               /* populate shared fields */
@@ -819,8 +819,8 @@ retry:
               }
 
               /* get public key algorithm info */
-              err = ptpgp_algorithm_info(
-                PTPGP_ALGORITHM_TYPE_PUBLIC_KEY,
+              err = ptpgp_type_info(
+                PTPGP_TYPE_PUBLIC_KEY,
                 p->packet.packet.t6.all.public_key_algorithm,
                 &info
               );
@@ -937,12 +937,12 @@ retry:
           p->state = STATE(SECRET_KEY_SYMMETRIC_ALGORITHM);
         } else if (src[0] > 0) {
           /* octet is symmetric algorithm */
-          ptpgp_algorithm_info_t *info;
+          ptpgp_type_info_t *info;
           ptpgp_err_t err;
 
           /* get symmetric algorithm info */
-          err = ptpgp_algorithm_info(
-            PTPGP_ALGORITHM_TYPE_SYMMETRIC_KEY,
+          err = ptpgp_type_info(
+            PTPGP_TYPE_SYMMETRIC,
             src[0], &info
           );
 
@@ -972,12 +972,12 @@ retry:
         break;
       case STATE(SECRET_KEY_SYMMETRIC_ALGORITHM):
         do {
-          ptpgp_algorithm_info_t *info;
+          ptpgp_type_info_t *info;
           ptpgp_err_t err;
 
           /* get symmetric algorithm info */
-          err = ptpgp_algorithm_info(
-            PTPGP_ALGORITHM_TYPE_SYMMETRIC_KEY,
+          err = ptpgp_type_info(
+            PTPGP_TYPE_SYMMETRIC,
             src[0], &info
           );
 
@@ -1005,24 +1005,24 @@ retry:
 
           if (
             (p->buf_len ==  2 &&
-             p->buf[0] == PTPGP_S2K_ALGORITHM_TYPE_SIMPLE) ||
+             p->buf[0] == PTPGP_S2K_TYPE_SIMPLE) ||
             (p->buf_len == 10 &&
-             p->buf[0] == PTPGP_S2K_ALGORITHM_TYPE_SALTED) ||
+             p->buf[0] == PTPGP_S2K_TYPE_SALTED) ||
             (p->buf_len == 11 &&
-             p->buf[0] == PTPGP_S2K_ALGORITHM_TYPE_ITERATED_AND_SALTED)
+             p->buf[0] == PTPGP_S2K_TYPE_ITERATED_AND_SALTED)
           ) {
             ptpgp_err_t err;
             u8 *salt = 0;
             size_t count = 0;
 
             switch (p->buf[0]) {
-            case PTPGP_S2K_ALGORITHM_TYPE_ITERATED_AND_SALTED:
+            case PTPGP_S2K_TYPE_ITERATED_AND_SALTED:
               count = PTPGP_S2K_COUNT_DECODE(p->buf[10]);
               /* fall-through */
-            case PTPGP_S2K_ALGORITHM_TYPE_SALTED:
+            case PTPGP_S2K_TYPE_SALTED:
               salt = p->buf + 2;
               break;
-            case PTPGP_S2K_ALGORITHM_TYPE_SIMPLE:
+            case PTPGP_S2K_TYPE_SIMPLE:
               /* do nothing */
               break;
             default:

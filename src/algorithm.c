@@ -1,6 +1,6 @@
 #include "internal.h"
 
-#define T(s) PTPGP_ALGORITHM_TYPE_##s
+#define T(s) PTPGP_TYPE_##s
 #define R(s) PTPGP_REQUIREMENT_##s
 
 #define F(k) \
@@ -19,19 +19,19 @@
   F(PRIVATE_109), \
   F(PRIVATE_110)
 
-static ptpgp_algorithm_info_t algos[] = {{
+static ptpgp_type_info_t algos[] = {{
 /* algorithm types */
-#define A(a) T(ALGORITHM_TYPE), PTPGP_ALGORITHM_TYPE_##a
-  A(ALGORITHM_TYPE),            R(MUST),      R(MUST),
-  "Algorithm Type",             "algorithm-type",         
+#define A(a) T(TYPE), PTPGP_TYPE_##a
+  A(TYPE),                      R(MUST),      R(MUST),
+  "Type",                       "type",         
   0,                            0, 0
 }, {
   A(PUBLIC_KEY),                R(MUST),      R(MUST),
   "Public Key Algorithm",       "public-key", 
   0,                            0, 0
 }, {
-  A(SYMMETRIC_KEY),             R(MUST),      R(MUST),
-  "Symmetric Key Algorithm",    "symmetric-key",
+  A(SYMMETRIC),                 R(MUST),      R(MUST),
+  "Symmetric Algorithm",        "symmetric",
   0,                            0, 0
 }, {
   A(COMPRESSION),               R(MUST),      R(MUST),
@@ -48,7 +48,7 @@ static ptpgp_algorithm_info_t algos[] = {{
 }, {
 #undef A
 /* public key algorithms (rfc4880 9.1) */
-#define A(a) T(PUBLIC_KEY), PTPGP_PUBLIC_KEY_ALGORITHM_TYPE_##a
+#define A(a) T(PUBLIC_KEY), PTPGP_PUBLIC_KEY_TYPE_##a
   A(RESERVED_0),                R(MUST_NOT),  R(MUST_NOT),
   "Reserved",                   NULL,
   0,                            0, 0
@@ -93,7 +93,7 @@ static ptpgp_algorithm_info_t algos[] = {{
 
 
 /* symmetric key algorithms (rfc4880 9.2) */
-#define A(a) T(SYMMETRIC_KEY), PTPGP_SYMMETRIC_KEY_ALGORITHM_TYPE_##a
+#define A(a) T(SYMMETRIC), PTPGP_SYMMETRIC_TYPE_##a
   A(PLAINTEXT),                 R(MUST),      R(MUST),
   "Plaintext",                  "plaintext",
   0,                            0, 0
@@ -154,7 +154,7 @@ static ptpgp_algorithm_info_t algos[] = {{
 
 
 /* compression algorithms (rfc4880 9.3) */
-#define A(a) T(COMPRESSION), PTPGP_COMPRESSION_ALGORITHM_TYPE_##a
+#define A(a) T(COMPRESSION), PTPGP_COMPRESSION_TYPE_##a
   A(NONE),                      R(MUST),      R(MUST),
   "Uncompressed",               "none",
   0,                            0, 0
@@ -175,7 +175,7 @@ static ptpgp_algorithm_info_t algos[] = {{
 
 
 /* hash algorithms (rfc4880 9.4) */
-#define A(a) T(HASH), PTPGP_HASH_ALGORITHM_TYPE_##a
+#define A(a) T(HASH), PTPGP_HASH_TYPE_##a
   A(RESERVED_0),                R(MUST_NOT),  R(MUST_NOT),
   "Reserved",                   NULL,
   0,                            0, 0
@@ -223,7 +223,7 @@ static ptpgp_algorithm_info_t algos[] = {{
 #undef A
 
 /* s2k algorithms (rfc4880 3.7) */
-#define A(a) T(S2K), PTPGP_S2K_ALGORITHM_TYPE_##a
+#define A(a) T(S2K), PTPGP_S2K_TYPE_##a
   A(SIMPLE),                    R(MUST),      R(SHOULD_NOT),
   "Simple",                     "simple",
   0,                            0, 0
@@ -249,9 +249,9 @@ static ptpgp_algorithm_info_t algos[] = {{
 }};
 
 ptpgp_err_t
-ptpgp_algorithm_info(ptpgp_algorithm_type_t t,
-                     uint32_t a,
-                     ptpgp_algorithm_info_t **r) {
+ptpgp_type_info(ptpgp_type_t t,
+                uint32_t a,
+                ptpgp_type_info_t **r) {
   size_t i;
 
   if (!r)
@@ -268,21 +268,21 @@ ptpgp_algorithm_info(ptpgp_algorithm_type_t t,
   }
 
   /* return failure */
-  return PTPGP_ERR_ALGORITHM_UNKNOWN;
+  return PTPGP_ERR_TYPE_UNKNOWN;
 }
 
 ptpgp_err_t
-ptpgp_algorithm_to_s(ptpgp_algorithm_type_t t,
-                     uint32_t a,
-                     u8 *dst,
-                     size_t dst_len,
-                     size_t *out_len) {
-  ptpgp_algorithm_info_t *info;
+ptpgp_type_to_s(ptpgp_type_t t,
+                uint32_t a,
+                u8 *dst,
+                size_t dst_len,
+                size_t *out_len) {
+  ptpgp_type_info_t *info;
   ptpgp_err_t err;
   size_t l;
 
   /* get algorithm info */
-  if ((err = ptpgp_algorithm_info(t, a, &info)) != PTPGP_OK)
+  if ((err = ptpgp_type_info(t, a, &info)) != PTPGP_OK)
     return err;
 
   /* get name length */
@@ -290,7 +290,7 @@ ptpgp_algorithm_to_s(ptpgp_algorithm_type_t t,
 
   /* check output buffer */
   if (l > dst_len)
-    return PTPGP_ERR_ALGORITHM_DEST_BUFFER_TOO_SMALL;
+    return PTPGP_ERR_TYPE_DEST_BUFFER_TOO_SMALL;
 
   /* copy string */
   memcpy(dst, info->name, l);
@@ -303,14 +303,14 @@ ptpgp_algorithm_to_s(ptpgp_algorithm_type_t t,
 }
 
 ptpgp_err_t 
-ptpgp_algorithm_find(ptpgp_algorithm_type_t t,
-                     char *key,
-                     uint32_t *r) {
+ptpgp_type_find(ptpgp_type_t t,
+                char *key,
+                uint32_t *r) {
   size_t i, l;
 
   /* could bsearch() this to speed things up, but hey */
   for (i = 0; algos[i].name; i++) {
-    /* make sure this is the right type and that the algorithm has a key */
+    /* make sure this is the right type and that the type has a key */
     if (algos[i].type != t || !algos[i].key)
       continue;
 
@@ -327,5 +327,5 @@ ptpgp_algorithm_find(ptpgp_algorithm_type_t t,
   }
 
   /* return failure */
-  return PTPGP_ERR_ALGORITHM_UNKNOWN;
+  return PTPGP_ERR_TYPE_UNKNOWN;
 }

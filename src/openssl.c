@@ -5,19 +5,19 @@
 /* hash methods */
 /****************/
 static const EVP_MD *
-get_hash_algorithm(ptpgp_hash_algorithm_type_t t) {
+get_hash_algorithm(ptpgp_hash_type_t t) {
   switch (t) {
-  case PTPGP_HASH_ALGORITHM_TYPE_MD5:
+  case PTPGP_HASH_TYPE_MD5:
     return EVP_md5();
-  case PTPGP_HASH_ALGORITHM_TYPE_SHA1:
+  case PTPGP_HASH_TYPE_SHA1:
     return EVP_sha1();
-  case PTPGP_HASH_ALGORITHM_TYPE_RIPEMD160:
+  case PTPGP_HASH_TYPE_RIPEMD160:
     return EVP_ripemd160();
-  case PTPGP_HASH_ALGORITHM_TYPE_SHA256:
+  case PTPGP_HASH_TYPE_SHA256:
     return EVP_sha256();
-  case PTPGP_HASH_ALGORITHM_TYPE_SHA384:
+  case PTPGP_HASH_TYPE_SHA384:
     return EVP_sha384();
-  case PTPGP_HASH_ALGORITHM_TYPE_SHA512:
+  case PTPGP_HASH_TYPE_SHA512:
     return EVP_sha512();
   default:
     return NULL;

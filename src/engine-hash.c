@@ -3,7 +3,7 @@
 ptpgp_err_t
 ptpgp_engine_hash_init(ptpgp_hash_context_t *c,
                        ptpgp_engine_t *e,
-                       ptpgp_hash_algorithm_type_t a) {
+                       ptpgp_hash_type_t a) {
   memset(c, 0, sizeof(ptpgp_hash_context_t));
 
   c->engine    = e;
@@ -54,7 +54,7 @@ ptpgp_engine_hash_read(ptpgp_hash_context_t *c,
 
 ptpgp_err_t
 ptpgp_engine_hash_once(ptpgp_engine_t *e,
-                       ptpgp_hash_algorithm_type_t a,
+                       ptpgp_hash_type_t a,
                        u8 *src, size_t src_len,
                        u8 *dst, size_t dst_len, 
                        size_t *out_len) {

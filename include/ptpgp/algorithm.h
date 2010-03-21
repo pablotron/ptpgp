@@ -12,16 +12,16 @@
   H(PRIVATE_110) = 110, \
   H(LAST) = 127
 
-#define H(a) PTPGP_ALGORITHM_TYPE_##a
+#define H(a) PTPGP_TYPE_##a
 typedef enum {
   /* algorithm types */
-  H(ALGORITHM_TYPE),
+  H(TYPE),
 
   /* public key algorithms (rfc4880 9.1) */
   H(PUBLIC_KEY),
 
-  /* symmetric key algorithms (rfc4880 9.2) */
-  H(SYMMETRIC_KEY),
+  /* symmetric algorithms (rfc4880 9.2) */
+  H(SYMMETRIC),
 
   /* compression algorithms (rfc4880 9.3) */
   H(COMPRESSION),
@@ -34,7 +34,7 @@ typedef enum {
 
   /* sentinel */
   H(LAST)
-} ptpgp_algorithm_type_t;
+} ptpgp_type_t;
 #undef H
 
 #define H(a) PTPGP_REQUIREMENT_##a
@@ -49,7 +49,7 @@ typedef enum {
 #undef H
 
 typedef struct {
-  ptpgp_algorithm_type_t type;
+  ptpgp_type_t type;
   uint32_t               algorithm;
 
   ptpgp_requirement_t    interpret,
@@ -62,10 +62,10 @@ typedef struct {
   uint32_t               symmetric_block_size,
                          num_public_key_mpis,
                          num_private_key_mpis;
-} ptpgp_algorithm_info_t;
+} ptpgp_type_info_t;
 
 /* public key algorithms (rfc4880 9.1) */
-#define H(a) PTPGP_PUBLIC_KEY_ALGORITHM_TYPE_##a
+#define H(a) PTPGP_PUBLIC_KEY_TYPE_##a
 typedef enum {
   H(RESERVED_0)               = 0,
   H(RSA)                      = 1,
@@ -79,11 +79,11 @@ typedef enum {
   H(DH)                       = 21,
 
   FOOTER
-} ptpgp_public_key_algorithm_type_t;
+} ptpgp_public_key_type_t;
 #undef H
 
 /* symmetric key algorithms (rfc4880 9.2) */
-#define H(a) PTPGP_SYMMETRIC_KEY_ALGORITHM_TYPE_##a
+#define H(a) PTPGP_SYMMETRIC_TYPE_##a
 typedef enum {
   H(PLAINTEXT)                = 0,
   H(IDEA)                     = 1,
@@ -103,10 +103,26 @@ typedef enum {
   H(CAMELLIA_256)             = 13,
 
   FOOTER
-} ptpgp_symmetric_key_algorithm_type_t;
+} ptpgp_symmetric_type_t;
 #undef H
 
-#define H(a) PTPGP_COMPRESSION_ALGORITHM_TYPE_##a
+/* FIXME: move this elsewhere */
+typedef enum {
+  PTPGP_SYMMETRIC_MODE_TYPE_NONE,
+  PTPGP_SYMMETRIC_MODE_TYPE_ECB,
+  PTPGP_SYMMETRIC_MODE_TYPE_CFB,
+  PTPGP_SYMMETRIC_MODE_TYPE_CBC,
+  PTPGP_SYMMETRIC_MODE_TYPE_OFB,
+  PTPGP_SYMMETRIC_MODE_TYPE_CTR,
+
+  /* XXX: do i need this? */
+  PTPGP_SYMMETRIC_MODE_TYPE_STREAM,
+
+  PTPGP_SYMMETRIC_MODE_TYPE_LAST
+} ptpgp_symmetric_mode_type_t;
+
+
+#define H(a) PTPGP_COMPRESSION_TYPE_##a
 typedef enum {
   H(NONE),
   H(ZIP),
@@ -114,10 +130,10 @@ typedef enum {
   H(BZIP2),
 
   FOOTER
-} ptpgp_compression_algorithm_type_t;
+} ptpgp_compression_type_t;
 #undef H
 
-#define H(a) PTPGP_HASH_ALGORITHM_TYPE_##a
+#define H(a) PTPGP_HASH_TYPE_##a
 typedef enum {
   H(RESERVED_0),
   H(MD5),
@@ -132,10 +148,10 @@ typedef enum {
   H(SHA512),
 
   FOOTER
-} ptpgp_hash_algorithm_type_t;
+} ptpgp_hash_type_t;
 #undef H
 
-#define H(a) PTPGP_S2K_ALGORITHM_TYPE_##a
+#define H(a) PTPGP_S2K_TYPE_##a
 typedef enum {
   H(SIMPLE)               = 0,
   H(SALTED)               = 1,
@@ -143,24 +159,24 @@ typedef enum {
   H(ITERATED_AND_SALTED)  = 3,
 
   FOOTER
-} ptpgp_s2k_algorithm_type_t;
+} ptpgp_s2k_type_t;
 #undef H
 
 
 ptpgp_err_t
-ptpgp_algorithm_to_s(ptpgp_algorithm_type_t, 
-                     uint32_t, u8 *,
-                     size_t,
-                     size_t *);
+ptpgp_type_to_s(ptpgp_type_t, 
+                uint32_t, u8 *,
+                size_t,
+                size_t *);
 
 ptpgp_err_t
-ptpgp_algorithm_info(ptpgp_algorithm_type_t, 
-                     uint32_t, 
-                     ptpgp_algorithm_info_t **);
+ptpgp_type_info(ptpgp_type_t, 
+                uint32_t, 
+                ptpgp_type_info_t **);
 
 ptpgp_err_t 
-ptpgp_algorithm_find(ptpgp_algorithm_type_t,
-                     char *,
-                     uint32_t *);
+ptpgp_type_find(ptpgp_type_t,
+                char *,
+                uint32_t *);
 
 #undef FOOTER

@@ -1,7 +1,7 @@
 #include "test-common.h"
 
 #define USAGE \
-  "%s - Hash input files with SHA-256.\n"
+  "%s - Hash input files with given digest algorithm.\n"
 
 static void
 read_cb(u8 *data, size_t data_len, void *user_data) {
@@ -16,7 +16,7 @@ read_cb(u8 *data, size_t data_len, void *user_data) {
 
 static void
 hash(ptpgp_engine_t *engine, 
-     ptpgp_hash_algorithm_type_t algorithm, 
+     ptpgp_hash_type_t algorithm, 
      char *path) {
   ptpgp_hash_context_t h;
   u8 src_buf[128], dst_buf[512];
@@ -75,21 +75,21 @@ init(ptpgp_engine_t *engine) {
   );
 }
 
-static ptpgp_hash_algorithm_type_t
+static ptpgp_hash_type_t
 find_hash_algorithm(char *key) {
   uint32_t r;
 
   PTPGP_ASSERT(
-    ptpgp_algorithm_find(PTPGP_ALGORITHM_TYPE_HASH, key, &r),
+    ptpgp_type_find(PTPGP_TYPE_HASH, key, &r),
     "find hash algorithm \"%s\"", key
   );
 
-  return (ptpgp_hash_algorithm_type_t) r;
+  return (ptpgp_hash_type_t) r;
 }
 
 int main(int argc, char *argv[]) {
   ptpgp_engine_t engine;
-  ptpgp_hash_algorithm_type_t hash_algo;
+  ptpgp_hash_type_t hash_algo;
 
   /* check command-line arguments */
   if (argc < 2) 

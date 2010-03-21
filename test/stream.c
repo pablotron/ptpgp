@@ -8,11 +8,11 @@ static ptpgp_packet_parser_t pp;
 static ptpgp_signature_subpacket_parser_t sspp;
 
 static char *
-algo_to_s(ptpgp_algorithm_type_t t,
+algo_to_s(ptpgp_type_t t,
           uint32_t a,
           char *buf,
           size_t buf_len) {
-  ptpgp_err_t err = ptpgp_algorithm_to_s(t, a, (u8*) buf, buf_len, NULL);
+  ptpgp_err_t err = ptpgp_type_to_s(t, a, (u8*) buf, buf_len, NULL);
 
   /* check for error */
   if (err != PTPGP_OK) {
@@ -20,7 +20,7 @@ algo_to_s(ptpgp_algorithm_type_t t,
 
     /* get algorithm type name */
     PTPGP_ASSERT(
-      ptpgp_algorithm_to_s(0, t, (u8*) algo_buf, sizeof(algo_buf), NULL),
+      ptpgp_type_to_s(0, t, (u8*) algo_buf, sizeof(algo_buf), NULL),
       "get name of algorithm type %d", t
     );
 
@@ -64,21 +64,21 @@ signature_subpacket_cb(ptpgp_signature_subpacket_parser_t *p,
   case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_PREFERRED_SYMMETRIC_ALGORITHM:
     printf(
       P "preferred_symmetric_algorithm: %s (%d)\n",
-      algo_to_s(PTPGP_ALGORITHM_TYPE_SYMMETRIC_KEY, *data, buf, sizeof(buf)),
+      algo_to_s(PTPGP_TYPE_SYMMETRIC, *data, buf, sizeof(buf)),
       *data
     );
     break;
   case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_PREFERRED_HASH_ALGORITHM:
     printf(
       P "preferred_hash_algorithm: %s (%d)\n",
-      algo_to_s(PTPGP_ALGORITHM_TYPE_HASH, *data, buf, sizeof(buf)),
+      algo_to_s(PTPGP_TYPE_HASH, *data, buf, sizeof(buf)),
       *data
     );
     break;
   case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_PREFERRED_COMPRESSION_ALGORITHM:
     printf(
       P "preferred_compression_algorithm: %s (%d)\n",
-      algo_to_s(PTPGP_ALGORITHM_TYPE_COMPRESSION, *data, buf, sizeof(buf)),
+      algo_to_s(PTPGP_TYPE_COMPRESSION, *data, buf, sizeof(buf)),
       *data
     );
     break;
@@ -108,7 +108,7 @@ signature_subpacket_cb(ptpgp_signature_subpacket_parser_t *p,
   case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_REVOCATION_PUBLIC_KEY_ALGORITHM:
     printf(
       P "revocation_public_key_algorithm: %s (%d)\n",
-      algo_to_s(PTPGP_ALGORITHM_TYPE_PUBLIC_KEY, *data, buf, sizeof(buf)),
+      algo_to_s(PTPGP_TYPE_PUBLIC_KEY, *data, buf, sizeof(buf)),
       *data
     );
     break;
@@ -155,14 +155,14 @@ signature_subpacket_cb(ptpgp_signature_subpacket_parser_t *p,
   case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_SIGNATURE_TARGET_PUBLIC_KEY_ALGORITHM:
     printf(
       P "signature_target_public_key_algorithm: %s (%d)\n",
-      algo_to_s(PTPGP_ALGORITHM_TYPE_PUBLIC_KEY, *data, buf, sizeof(buf)),
+      algo_to_s(PTPGP_TYPE_PUBLIC_KEY, *data, buf, sizeof(buf)),
       *data
     );
     break;
   case PTPGP_SIGNATURE_SUBPACKET_PARSER_TOKEN_SIGNATURE_TARGET_HASH_ALGORITHM:
     printf(
       P "signature_target_hash_algorithm: %s (%d)\n",
-      algo_to_s(PTPGP_ALGORITHM_TYPE_HASH, *data, buf, sizeof(buf)),
+      algo_to_s(PTPGP_TYPE_HASH, *data, buf, sizeof(buf)),
       *data
     );
     break;
@@ -252,7 +252,7 @@ packet_cb(ptpgp_packet_parser_t *p,
         packet->packet.t1.version,
 
         algo_to_s(
-          PTPGP_ALGORITHM_TYPE_PUBLIC_KEY,
+          PTPGP_TYPE_PUBLIC_KEY,
           packet->packet.t1.algorithm,
           buf, sizeof(buf)
         ),
@@ -304,14 +304,14 @@ packet_cb(ptpgp_packet_parser_t *p,
             packet->packet.t2.versions.v3.signature_type,
 
             algo_to_s(
-              PTPGP_ALGORITHM_TYPE_PUBLIC_KEY,
+              PTPGP_TYPE_PUBLIC_KEY,
               packet->packet.t2.versions.v3.public_key_algorithm,
               buf, sizeof(buf)
             ),
             packet->packet.t2.versions.v3.public_key_algorithm,
 
             algo_to_s(
-              PTPGP_ALGORITHM_TYPE_HASH,
+              PTPGP_TYPE_HASH,
               packet->packet.t2.versions.v3.hash_algorithm,
               hash_buf, sizeof(hash_buf)
             ),

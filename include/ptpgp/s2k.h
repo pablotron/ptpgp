@@ -1,7 +1,7 @@
 
 typedef struct {
-  ptpgp_s2k_algorithm_type_t type;
-  ptpgp_hash_algorithm_type_t algorithm;
+  ptpgp_s2k_type_t type;
+  ptpgp_hash_type_t algorithm;
   u8 salt[8];
 
   uint32_t count;
@@ -13,8 +13,8 @@ typedef struct {
 
 ptpgp_err_t
 ptpgp_s2k_init(ptpgp_s2k_t *s2k,
-               ptpgp_s2k_algorithm_type_t type,
-               ptpgp_hash_algorithm_type_t algo,
+               ptpgp_s2k_type_t type,
+               ptpgp_hash_type_t algo,
                u8 *salt,
                uint32_t count);
 

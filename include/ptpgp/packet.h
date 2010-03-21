@@ -54,25 +54,25 @@ typedef struct {
 /* signature packet (tag 3, rfc4880 5.3) */
 typedef struct {
   u8                                    version;
-  ptpgp_symmetric_key_algorithm_type_t  algorithm;
+  ptpgp_symmetric_type_t                algorithm;
   ptpgp_s2k_t                           s2k;
   u8                                    *key;
   size_t                                key_len;
-} ptpgp_packet_symmetric_key_encrypted_session_key_t;
+} ptpgp_packet_symmetric_encrypted_session_key_t;
 
 /* signature packet (tag 4, rfc4880 5.4) */
 typedef struct {
   u8                                    version;
   ptpgp_signature_type_t                signature_type;
-  ptpgp_hash_algorithm_type_t           hash_algorithm;
-  ptpgp_public_key_algorithm_type_t     public_key_algorithm;
+  ptpgp_hash_type_t                     hash_algorithm;
+  ptpgp_public_key_type_t               public_key_algorithm;
   u8                                    key_id[8],
                                         nested;
 } ptpgp_packet_one_pass_signature_t;
 
 /* compressed data packet (tag 8, rfc4880 5.6) */
 typedef struct {
-  ptpgp_compression_algorithm_type_t    compression_algorithm;
+  ptpgp_compression_type_t              compression_algorithm;
   u8                                   *data;
   size_t                                data_len;
 } ptpgp_packet_compressed_data_t;
@@ -142,7 +142,7 @@ typedef struct {
                                          * block sizes */
                                         iv[32];
 
-  ptpgp_symmetric_key_algorithm_type_t  symmetric_algorithm;
+  ptpgp_symmetric_type_t                symmetric_algorithm;
   ptpgp_s2k_t                           s2k;
 
 } ptpgp_packet_private_key_t;
@@ -160,7 +160,7 @@ typedef struct {
     ptpgp_packet_raw_t                                    raw;
     ptpgp_packet_public_key_encrypted_session_key_t       t1;
     ptpgp_packet_signature_t                              t2;
-    ptpgp_packet_symmetric_key_encrypted_session_key_t    t3;
+    ptpgp_packet_symmetric_encrypted_session_key_t        t3;
     ptpgp_packet_one_pass_signature_t                     t4;
 
     ptpgp_packet_private_key_t                            t5;
