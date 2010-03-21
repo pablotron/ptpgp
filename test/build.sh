@@ -11,8 +11,12 @@ LIBS=""
 INC="$INC -DPTPGP_USE_GCRYPT $(libgcrypt-config --cflags)"
 LIBS="$LIBS $(libgcrypt-config --libs)"
 
+# add openssl support
+INC="$INC -DPTPGP_USE_OPENSSL"
+LIBS="$LIBS -lcrypto"
+
 # list of tests to compile
-TESTS="stream error armor base64 armor-encoder uri-parser gcrypt-hash"
+TESTS="stream error armor base64 armor-encoder uri-parser gcrypt-hash openssl-hash"
 
 cd ../src
 for i in *.c; do

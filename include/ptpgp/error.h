@@ -102,6 +102,7 @@ typedef enum {
 
   /* engine-hash errors */
   PTPGP_ERR_ENGINE_HASH_INIT_FAILED, /* hash context init failed */
+  PTPGP_ERR_ENGINE_HASH_PUSH_FAILED, /* couldn't push data to hash context */
   PTPGP_ERR_ENGINE_HASH_DONE_FAILED, /* couldn't finalize hash context */
   PTPGP_ERR_ENGINE_HASH_CONTEXT_ALREADY_DONE, /* hash context already done */
   PTPGP_ERR_ENGINE_HASH_CONTEXT_NOT_DONE, /* hash context not done */

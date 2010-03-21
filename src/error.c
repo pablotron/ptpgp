@@ -104,6 +104,7 @@ static char *errors[] = {
 
   /* engine-hash errors */
   "hash context init failed",
+  "couldn't push data to hash context",
   "couldn't finalize hash context",
   "hash context already done",
   "hash context not done",
