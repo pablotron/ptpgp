@@ -12,4 +12,5 @@ test/uri-parser
 test/gcrypt-hash
 test/openssl-hash
 test/gcrypt-encrypt
+test/openssl-encrypt
 src/inc

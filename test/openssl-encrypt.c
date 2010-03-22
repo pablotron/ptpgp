@@ -1,10 +1,11 @@
 #include "test-common.h"
+
 /* 
  * Example:
  *
  *   $ echo 'hello this is a test' | \
- *       ./gcrypt-encrypt -e aes-128 cfb foobarbaz | \
- *       ./gcrypt-encrypt -d aes-128 cfb foobarbaz
+ *       ./openssl-encrypt -e aes-128 cfb foobarbaz | \
+ *       ./openssl-encrypt -d aes-128 cfb foobarbaz
  *
  * You should also be able to mix and match between gcrypt and openssl,
  * like so:
@@ -19,7 +20,7 @@
   "%s - Encrypt or decrypt files with given symmetric cipher/mode.\n" \
   "Usage:\n" \
   "\n" \
-  "  gcrypt-encrypt <-e|-d> <algo> <mode> <password> [files...]\n"
+  "  openssl-encrypt <-e|-d> <algo> <mode> <password> [files...]\n"
 
 static ptpgp_err_t
 data_cb(ptpgp_encrypt_context_t *c, u8 *data, size_t data_len) {
@@ -67,20 +68,10 @@ run(ptpgp_encrypt_options_t *o, char *path) {
 
 static void
 init(ptpgp_engine_t *engine) {
-  /* check gcrypt version */
-  if (!gcry_check_version(GCRYPT_VERSION))
-    ptpgp_sys_die("libgcrypt version mismatch");
-
-  /* disable secure memory */
-  gcry_control(GCRYCTL_DISABLE_SECMEM, 0);
-
-  /* finish intializing gcrypt */
-  gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
-
-  /* init ptpgp gcrypt engine */
+  /* init ptpgp openssl engine */
   PTPGP_ASSERT(
-    ptpgp_gcrypt_engine_init(engine),
-    "init gcrypt engine"
+    ptpgp_openssl_engine_init(engine),
+    "init openssl engine"
   );
 }
 

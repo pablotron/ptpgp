@@ -17,7 +17,7 @@ LIBS="$LIBS -lcrypto"
 
 # list of tests to compile
 TESTS="stream error armor base64 armor-encoder uri-parser \
-       gcrypt-hash openssl-hash gcrypt-encrypt"
+       gcrypt-hash openssl-hash gcrypt-encrypt openssl-encrypt"
 
 cd ../src
 for i in *.c; do
