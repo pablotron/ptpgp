@@ -75,36 +75,283 @@ hash_done(ptpgp_hash_context_t *c) {
 /********************************/
 /* symmetric encryption methods */
 /********************************/
+static const EVP_CIPHER *
+get_cipher_type(ptpgp_encrypt_context_t *c) {
+  switch (c->options.algorithm) {
+  case PTPGP_SYMMETRIC_TYPE_PLAINTEXT:
+    return EVP_enc_null();
+  case PTPGP_SYMMETRIC_TYPE_IDEA:
+#ifdef OPENSSL_NO_IDEA
+    /* no idea in this ssl build */
+    return NULL;
+#else /* !OPENSSL_NO_IDEA */
+    switch (c->options.mode) {
+    case PTPGP_SYMMETRIC_MODE_TYPE_ECB:
+      return EVP_idea_ecb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CFB:
+      return EVP_idea_cfb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CBC:
+      return EVP_idea_cbc();
+    case PTPGP_SYMMETRIC_MODE_TYPE_OFB:
+      return EVP_idea_ofb();
+    default:
+      return NULL;
+    }
+#endif /* OPENSSL_NO_IDEA */
+  case PTPGP_SYMMETRIC_TYPE_TRIPLEDES:
+    switch (c->options.mode) {
+    case PTPGP_SYMMETRIC_MODE_TYPE_ECB:
+      return EVP_des_ede3();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CFB:
+      return EVP_des_ede3_cfb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CBC:
+      return EVP_des_ede3_cbc();
+    case PTPGP_SYMMETRIC_MODE_TYPE_OFB:
+      return EVP_des_ede3_ofb();
+    default:
+      return NULL;
+    }
+  case PTPGP_SYMMETRIC_TYPE_CAST5:
+    switch (c->options.mode) {
+    case PTPGP_SYMMETRIC_MODE_TYPE_ECB:
+      return EVP_cast5_ecb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CFB:
+      return EVP_cast5_cfb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CBC:
+      return EVP_cast5_cbc();
+    case PTPGP_SYMMETRIC_MODE_TYPE_OFB:
+      return EVP_cast5_ofb();
+    default:
+      return NULL;
+    }
+  case PTPGP_SYMMETRIC_TYPE_BLOWFISH:
+    switch (c->options.mode) {
+    case PTPGP_SYMMETRIC_MODE_TYPE_ECB:
+      return EVP_bf_ecb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CFB:
+      return EVP_bf_cfb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CBC:
+      return EVP_bf_cbc();
+    case PTPGP_SYMMETRIC_MODE_TYPE_OFB:
+      return EVP_bf_ofb();
+    default:
+      return NULL;
+    }
+  case PTPGP_SYMMETRIC_TYPE_AES_128:
+    switch (c->options.mode) {
+    case PTPGP_SYMMETRIC_MODE_TYPE_ECB:
+      return EVP_aes_128_ecb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CFB:
+      return EVP_aes_128_cfb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CBC:
+      return EVP_aes_128_cbc();
+    case PTPGP_SYMMETRIC_MODE_TYPE_OFB:
+      return EVP_aes_128_ofb();
+    default:
+      return NULL;
+    }
+  case PTPGP_SYMMETRIC_TYPE_AES_192:
+    switch (c->options.mode) {
+    case PTPGP_SYMMETRIC_MODE_TYPE_ECB:
+      return EVP_aes_192_ecb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CFB:
+      return EVP_aes_192_cfb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CBC:
+      return EVP_aes_192_cbc();
+    case PTPGP_SYMMETRIC_MODE_TYPE_OFB:
+      return EVP_aes_192_ofb();
+    default:
+      return NULL;
+    }
+  case PTPGP_SYMMETRIC_TYPE_AES_256:
+    switch (c->options.mode) {
+    case PTPGP_SYMMETRIC_MODE_TYPE_ECB:
+      return EVP_aes_256_ecb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CFB:
+      return EVP_aes_256_cfb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CBC:
+      return EVP_aes_256_cbc();
+    case PTPGP_SYMMETRIC_MODE_TYPE_OFB:
+      return EVP_aes_256_ofb();
+    default:
+      return NULL;
+    }
+  case PTPGP_SYMMETRIC_TYPE_TWOFISH:
+    return NULL;
+  case PTPGP_SYMMETRIC_TYPE_CAMELLIA_128:
+#ifdef OPENSSL_NO_CAMELLIA
+    /* no camellia included, return NULL */
+    return NULL;
+#else /* !OPENSSL_NO_CAMELLIA */
+    switch (c->options.mode) {
+    case PTPGP_SYMMETRIC_MODE_TYPE_ECB:
+      return EVP_camellia_128_ecb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CFB:
+      return EVP_camellia_128_cfb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CBC:
+      return EVP_camellia_128_cbc();
+    case PTPGP_SYMMETRIC_MODE_TYPE_OFB:
+      return EVP_camellia_128_ofb();
+    default:
+      return NULL;
+    }
+#endif /* OPENSSL_NO_CAMELLIA */
+  case PTPGP_SYMMETRIC_TYPE_CAMELLIA_192:
+#ifdef OPENSSL_NO_CAMELLIA
+    /* no camellia included, return NULL */
+    return NULL;
+#else /* !OPENSSL_NO_CAMELLIA */
+    switch (c->options.mode) {
+    case PTPGP_SYMMETRIC_MODE_TYPE_ECB:
+      return EVP_camellia_192_ecb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CFB:
+      return EVP_camellia_192_cfb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CBC:
+      return EVP_camellia_192_cbc();
+    case PTPGP_SYMMETRIC_MODE_TYPE_OFB:
+      return EVP_camellia_192_ofb();
+    default:
+      return NULL;
+    }
+#endif /* OPENSSL_NO_CAMELLIA */
+  case PTPGP_SYMMETRIC_TYPE_CAMELLIA_256:
+#ifdef OPENSSL_NO_CAMELLIA
+    /* no camellia included, return NULL */
+    return NULL;
+#else /* !OPENSSL_NO_CAMELLIA */
+    switch (c->options.mode) {
+    case PTPGP_SYMMETRIC_MODE_TYPE_ECB:
+      return EVP_camellia_256_ecb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CFB:
+      return EVP_camellia_256_cfb();
+    case PTPGP_SYMMETRIC_MODE_TYPE_CBC:
+      return EVP_camellia_256_cbc();
+    case PTPGP_SYMMETRIC_MODE_TYPE_OFB:
+      return EVP_camellia_256_ofb();
+    default:
+      return NULL;
+    }
+#endif /* OPENSSL_NO_CAMELLIA */
+  default:
+    return NULL;
+  }
+}
 
-static ptpgp_err_t 
+static ptpgp_err_t
 encrypt_init(ptpgp_encrypt_context_t *c) {
-  UNUSED(c);
+  EVP_CIPHER_CTX *h = malloc(sizeof(EVP_CIPHER_CTX));
+  const EVP_CIPHER *type  = get_cipher_type(c);
+  int ok;
 
-  /* TODO */
+  /* couldn't allocate openssl cipher context */
+  if (!h)
+    return PTPGP_ERR_ENGINE_ENCRYPT_INIT_FAILED;
 
+  /* init cipher context */
+  EVP_CIPHER_CTX_init(h);
+
+  /* configure cipher context */
+  ok = EVP_CipherInit_ex(h, type, NULL,
+                         c->options.key,
+                         c->options.iv,
+                         c->options.encrypt);
+
+  if (!ok) {
+    /* free cipher context handle */
+    EVP_CIPHER_CTX_cleanup(h);
+    free(h);
+
+    /* this error message isn't strictly accurate, but it lets us
+     * distinguish between a malloc() error above and and an init error
+     * here */
+    return PTPGP_ERR_ENGINE_ENCRYPT_INIT_KEY_FAILED;
+  }
+
+  /* save cipher context */
+  c->engine_data = (void*) h;
+
+  /* return success */
   return PTPGP_OK;
 }
 
-static ptpgp_err_t 
-encrypt_push(ptpgp_encrypt_context_t *c, 
+#define BUF_SIZE PTPGP_ENCRYPT_CONTEXT_BUFFER_SIZE
+
+static ptpgp_err_t
+encrypt_push(ptpgp_encrypt_context_t *c,
              u8 *src,
              size_t src_len) {
-  UNUSED(c);
-  UNUSED(src);
-  UNUSED(src_len);
+  EVP_CIPHER_CTX *h = (EVP_CIPHER_CTX*) c->engine_data;
+  int len, buf_len;
 
-  /* TODO */
+  /* check for NULL cipher context (previous error occurred) */
+  if (!h)
+    return PTPGP_ERR_ENGINE_ENCRYPT_PUSH_FAILED;
 
+  while (src_len > 0) {
+    /* calculate input length */
+    /* FIXME: should leave room for one extra block */
+    len = (src_len < BUF_SIZE) ? src_len : BUF_SIZE;
+
+    /* reset to size of output buffer; after call to EVP_CipherUpdate
+     * this will contain the number of output bytes */
+    buf_len = BUF_SIZE;
+
+    /* encrypt/decrypt data */
+    if (!EVP_CipherUpdate(h, c->buf, &buf_len, src, len)) {
+      /* free cipher context handle */
+      EVP_CIPHER_CTX_cleanup(h);
+      free(h);
+      c->engine_data = NULL;
+
+      /* return failure */
+      return PTPGP_ERR_ENGINE_ENCRYPT_PUSH_FAILED;
+    }
+
+    /* pass data to callback */
+    if (buf_len > 0)
+      TRY(c->options.cb(c, c->buf, buf_len));
+
+    /* shift input */
+    src += len;
+    src_len -= len;
+  }
+
+  /* return success */
   return PTPGP_OK;
 }
 
-static ptpgp_err_t 
+static ptpgp_err_t
 encrypt_done(ptpgp_encrypt_context_t *c) {
-  UNUSED(c);
+  EVP_CIPHER_CTX *h = (EVP_CIPHER_CTX*) c->engine_data;
+  int len = BUF_SIZE;
+  ptpgp_err_t r;
 
-  /* TODO */
+  /* check for NULL cipher context (previous error occurred) */
+  if (!h)
+    return PTPGP_ERR_ENGINE_ENCRYPT_DONE_FAILED;
 
-  return PTPGP_OK;
+  /* finalize cipher context */
+  if (EVP_CipherFinal_ex(h, c->buf, &len)) {
+    /* success, pass remaining data to callback */
+
+    /* pass data to callback */
+    if (len > 0)
+      TRY(c->options.cb(c, c->buf, len));
+
+    /* return success */
+    r = PTPGP_OK;
+  } else {
+    /* return failure :( */
+    r = PTPGP_ERR_ENGINE_ENCRYPT_DONE_FAILED;
+  }
+
+  /* regardless of the result, free cipher context handle */
+  EVP_CIPHER_CTX_cleanup(h);
+  free(h);
+  c->engine_data = NULL;
+
+  /* return result */
+  return r;
 }
 
 /******************/
@@ -152,7 +399,7 @@ random_nonce(ptpgp_engine_t *e, u8 *dst, size_t dst_len) {
 /* init methods */
 /****************/
 
-static ptpgp_engine_t 
+static ptpgp_engine_t
 engine = {
   /* hash methods */
   .hash = {
@@ -175,7 +422,7 @@ engine = {
   }
 };
 
-ptpgp_err_t 
+ptpgp_err_t
 ptpgp_openssl_engine_init(ptpgp_engine_t *r) {
   /* FIXME: is this the right place for this? */
   OpenSSL_add_all_digests();

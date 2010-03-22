@@ -1,5 +1,10 @@
 [ ] u8 => uint8_t
-[ ] algorithm => type (.h and defines)
-[ ] move symmetric modes to algorithm/type
+[x] algorithm => type (.h and defines)
+[x] move symmetric modes to algorithm/type
 [ ] handle secure memory
 [ ] handle CFB sync mode (openpgp cfb variant)
+[ ] docs: openssl doesn't support twofish
+[ ] docs: gcryp doesn't support idea
+[ ] docs: openssl _may_ not support camellia or idea either
+[ ] should i disable openssl encrypt padding?
+[ ] pool cipher contexts to defer malloc/free?
