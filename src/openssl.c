@@ -247,6 +247,11 @@ encrypt_init(ptpgp_encrypt_context_t *c) {
   if (!h)
     return PTPGP_ERR_ENGINE_ENCRYPT_INIT_FAILED;
 
+  if (!type) {
+    free(h);
+    return PTPGP_ERR_ENGINE_ENCRYPT_INIT_UNSUPPORTED_ALGORITHM;
+  }
+
   /* init cipher context */
   EVP_CIPHER_CTX_init(h);
 

@@ -110,6 +110,7 @@ typedef enum {
 
   /* engine-encrypt errors */
   PTPGP_ERR_ENGINE_ENCRYPT_INIT_FAILED, /* symmetric encryption context init failed */
+  PTPGP_ERR_ENGINE_ENCRYPT_INIT_UNSUPPORTED_ALGORITHM, /* unsupported symmetric algorithm or block cipher */
   PTPGP_ERR_ENGINE_ENCRYPT_INIT_KEY_FAILED, /* couldn't set symmetric key */
   PTPGP_ERR_ENGINE_ENCRYPT_INIT_IV_FAILED, /* couldn't set initialization vector */
   PTPGP_ERR_ENGINE_ENCRYPT_PUSH_FAILED, /* push failed */

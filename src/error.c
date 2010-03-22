@@ -112,6 +112,7 @@ static char *errors[] = {
 
   /* engine-encrypt errors */
   "symmetric encryption context init failed",
+  "unsupported symmetric cipher or mode",
   "couldn't set symmetric key",
   "couldn't set initialization vector",
   "push failed",
