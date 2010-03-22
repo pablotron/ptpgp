@@ -6,57 +6,48 @@
   "\n" \
   "  gcrypt-encrypt <-e|-d> <algo> <mode> <password> [files...]\n"
 
+static ptpgp_err_t
+data_cb(ptpgp_encrypt_context_t *c, u8 *data, size_t data_len) {
+  FILE *fh = (FILE*) c->options.user_data;
+
+  /* write to output */
+  if (data_len > 0)
+    if (!fwrite(data, data_len, 1, fh))
+      ptpgp_sys_die("fwrite() failed:");
+
+  /* return success */
+  return PTPGP_OK;
+}
 
 static void
 read_cb(u8 *data, size_t data_len, void *user_data) {
-  ptpgp_hash_context_t *h = (ptpgp_hash_context_t*) user_data;
+  ptpgp_encrypt_context_t *c = (ptpgp_encrypt_context_t*) user_data;
 
   /* write file data to parser */
   PTPGP_ASSERT(
-    ptpgp_engine_hash_push(h, data, data_len),
-    "write data to hash context"
+    ptpgp_engine_encrypt_push(c, data, data_len),
+    "write data to encryption context"
   );
 }
 
 static void
-run(ptpgp_encrypt_options_t *o,
-     char *path) {
+run(ptpgp_encrypt_options_t *o, char *path) {
   ptpgp_encrypt_context_t c;
-  u8 src_buf[128], dst_buf[512];
-  size_t len;
 
   /* init ptpgp stream parser */
   PTPGP_ASSERT(
-    ptpgp_engine_hash_init(&h, engine, algorithm),
-    "initialize hash context for \"%s\"", path
+    ptpgp_engine_encrypt_init(&c, o),
+    "initialize encrypt context for \"%s\"", path
   );
 
   /* read input file */
-  file_read(path, read_cb, &h);
+  file_read(path, read_cb, &c);
 
-  /* finish hash context */
+  /* finish encrypt context */
   PTPGP_ASSERT(
-    ptpgp_engine_hash_done(&h),
-    "finalize hash context"
+    ptpgp_engine_encrypt_done(&c),
+    "finalize encrypt context"
   );
-
-  /* read hash value into source buffer */
-  PTPGP_ASSERT(
-    ptpgp_engine_hash_read(&h, src_buf, sizeof(src_buf), &len),
-    "read hash value"
-  );
-
-  /* convert hash value to hex */
-  PTPGP_ASSERT(
-    ptpgp_to_hex(src_buf, len, dst_buf, sizeof(dst_buf)),
-    "convert hash value to hex"
-  );
-
-  /* null-terminate output buffer */
-  dst_buf[len * 2] = 0;
-
-  /* print digest result */
-  printf("%s %s\n", dst_buf, path);
 }
 
 static void
@@ -103,13 +94,13 @@ find_mode(char *key) {
 }
 
 static size_t
-hash_password(ptpgp_engine_t *engine, char *src, char *dst, size_t dst_len) {
+hash_password(ptpgp_engine_t *engine, u8 *src, u8 *dst, size_t dst_len) {
   size_t r;
 
   /* hash password */
   PTPGP_ASSERT(
-    ptpgp_engine_hash_once(engine, PTPGP_HASH_TYPE_SHA1,
-                           src, strlen(src),
+    ptpgp_engine_hash_once(engine, PTPGP_HASH_TYPE_SHA512,
+                           src, strlen((char*) src),
                            dst, dst_len, &r),
     "hash password"
   );
@@ -118,32 +109,53 @@ hash_password(ptpgp_engine_t *engine, char *src, char *dst, size_t dst_len) {
 }
 
 /* evil globals */
-static char key[128];
+/* note: the key and iv buffers must be larger than the largest key size
+ * and largest block size, respectively, for all symmetric algorithms */
+static u8 key[512], iv[512];
 static size_t key_len = 0;
 
-static unsigned char iv[64];
-
 static void
-init_options(ptpgp_symmetric_options_t *o, ptpgp_engine_t *e, char **argv) {
-  /* get encrypt/decrypt mode */
+init_options(ptpgp_encrypt_options_t *o,
+             ptpgp_engine_t *e,
+             char *argv[]) {
+  ptpgp_type_info_t *info;
+
+  /* set engine */
+  o->engine = e;
+
+  /* set encrypt/decrypt mode */
   o->encrypt = (!strncmp("-e", argv[1], 3) ||
                 !strncmp("--encrypt", argv[1], 10));
 
-  /* find symmetric algorithm */
+  /* set algorithm */
   o->algorithm = find_algorithm(argv[2]);
 
-  /* find symmetric mode */
+  /* get algorithm info */
+  PTPGP_ASSERT(
+    ptpgp_type_info(PTPGP_TYPE_SYMMETRIC, o->algorithm, &info),
+    "get symmetric algorithm info"
+  );
+
+  /* set mode */
   o->mode = find_mode(argv[3]);
 
   /* hash password */
-  hash_password(&engine, argv[4], key, sizeof(key), &key_len);
+  key_len = hash_password(e, (u8*) argv[4], key, sizeof(key));
 
+  /* set key */
   o->key = key;
-  o->key_len = key_len;
+  o->key_len = PTPGP_INFO_SYMMETRIC_KEY_SIZE(info) / 8;
 
+  /* set iv */
   memset(iv, 0, sizeof(iv));
   o->iv = iv;
-  o->iv_len = sizeof(iv);
+  o->iv_len = PTPGP_INFO_SYMMETRIC_BLOCK_SIZE(info) / 8;
+
+  D("o->key_len = %d, o->iv_len = %d", (int) o->key_len, (int) o->iv_len);
+
+  /* set callback */
+  o->cb = data_cb;
+  o->user_data = stdout;
 }
 
 int main(int argc, char *argv[]) {
@@ -158,7 +170,7 @@ int main(int argc, char *argv[]) {
   init(&engine);
 
   /* init options */
-  init_options(&o, &e, argv);
+  init_options(&o, &engine, argv);
 
   if (argc > 5) {
     int i;
