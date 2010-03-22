@@ -120,6 +120,10 @@ typedef enum {
   PTPGP_ERR_ENGINE_RANDOM_UNSUPPORTED, /* random numbers unsupported by this engine */
   PTPGP_ERR_ENGINE_RANDOM_FAILED, /* couldn't generate random number */
 
+  /* engine-pk-genkey errors */
+  PTPGP_ERR_ENGINE_PK_GENKEY_FAILED, /* key generation failed */
+  PTPGP_ERR_ENGINE_PK_GENKEY_UNSUPPORTED_ALGORITHM, /* unsupported public key algorithm */
+
   /* sentinel */
   PTPGP_ERR_LAST
 } ptpgp_err_t;

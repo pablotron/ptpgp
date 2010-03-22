@@ -21,3 +21,6 @@
 
 void print_usage_and_exit(char *app, char *fmt);
 void file_read(char *path, void (*)(u8 *, size_t, void *), void *);
+
+void init_gcrypt(ptpgp_engine_t *engine);
+void init_openssl(ptpgp_engine_t *engine);

@@ -5,7 +5,7 @@ INC="-I../include -DPTPGP_DEBUG -O2"
 # INC="-I../include -O2"
 
 # libs
-LIBS=""
+LIBS="-lm"
 
 # add gcrypt support
 INC="$INC -DPTPGP_USE_GCRYPT $(libgcrypt-config --cflags)"
@@ -16,8 +16,9 @@ INC="$INC -DPTPGP_USE_OPENSSL"
 LIBS="$LIBS -lcrypto"
 
 # list of tests to compile
-TESTS="stream error armor base64 armor-encoder uri-parser \
-       gcrypt-hash openssl-hash gcrypt-encrypt openssl-encrypt"
+TESTS="stream error armor base64 armor-encoder uri-parser      \
+       gcrypt-hash openssl-hash gcrypt-encrypt openssl-encrypt \
+       gcrypt-genkey openssl-genkey"
 
 cd ../src
 for i in *.c; do

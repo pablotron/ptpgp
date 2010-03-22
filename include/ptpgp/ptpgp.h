@@ -23,6 +23,8 @@ extern "C" {
 #include <ptpgp/tag.h>
 #include <ptpgp/type.h>
 #include <ptpgp/key-flag.h>
+#include <ptpgp/mpi.h>
+#include <ptpgp/pk-key.h>
 
 #include <ptpgp/s2k.h>
 #include <ptpgp/crc24.h>
@@ -32,6 +34,7 @@ extern "C" {
 #include <ptpgp/engine-hash.h>
 #include <ptpgp/engine-encrypt.h>
 #include <ptpgp/engine-random.h>
+#include <ptpgp/engine-pk.h>
 #include <ptpgp/engine.h>
 #include <ptpgp/openssl.h>
 #include <ptpgp/gcrypt.h>

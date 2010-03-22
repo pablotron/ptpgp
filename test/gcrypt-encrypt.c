@@ -65,25 +65,6 @@ run(ptpgp_encrypt_options_t *o, char *path) {
   );
 }
 
-static void
-init(ptpgp_engine_t *engine) {
-  /* check gcrypt version */
-  if (!gcry_check_version(GCRYPT_VERSION))
-    ptpgp_sys_die("libgcrypt version mismatch");
-
-  /* disable secure memory */
-  gcry_control(GCRYCTL_DISABLE_SECMEM, 0);
-
-  /* finish intializing gcrypt */
-  gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
-
-  /* init ptpgp gcrypt engine */
-  PTPGP_ASSERT(
-    ptpgp_gcrypt_engine_init(engine),
-    "init gcrypt engine"
-  );
-}
-
 static ptpgp_symmetric_type_t
 find_algorithm(char *key) {
   uint32_t r;
@@ -182,7 +163,7 @@ int main(int argc, char *argv[]) {
     print_usage_and_exit(argv[0], USAGE);
 
   /* init engine */
-  init(&engine);
+  init_gcrypt(&engine);
 
   /* init options */
   init_options(&o, &engine, argv);

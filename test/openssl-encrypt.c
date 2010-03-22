@@ -66,15 +66,6 @@ run(ptpgp_encrypt_options_t *o, char *path) {
   );
 }
 
-static void
-init(ptpgp_engine_t *engine) {
-  /* init ptpgp openssl engine */
-  PTPGP_ASSERT(
-    ptpgp_openssl_engine_init(engine),
-    "init openssl engine"
-  );
-}
-
 static ptpgp_symmetric_type_t
 find_algorithm(char *key) {
   uint32_t r;
@@ -173,7 +164,7 @@ int main(int argc, char *argv[]) {
     print_usage_and_exit(argv[0], USAGE);
 
   /* init engine */
-  init(&engine);
+  init_openssl(&engine);
 
   /* init options */
   init_options(&o, &engine, argv);

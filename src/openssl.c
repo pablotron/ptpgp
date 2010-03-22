@@ -399,6 +399,95 @@ random_nonce(ptpgp_engine_t *e, u8 *dst, size_t dst_len) {
   return PTPGP_OK;
 }
 
+/**********************/
+/* public key methods */
+/**********************/
+static void
+dump_bn(char *name, BIGNUM *bn) {
+  char *s;
+
+  if (bn && (s = BN_bn2hex(bn)) != NULL) {
+    D("%s = %s", name, s);
+    OPENSSL_free(s);
+  }
+}
+
+static void
+dump_rsa(RSA *rsa) {
+  dump_bn("n", rsa->n);
+  dump_bn("e", rsa->e);
+  dump_bn("d", rsa->d);
+  dump_bn("p", rsa->p);
+  dump_bn("q", rsa->q);
+  dump_bn("dmp1", rsa->dmp1);
+  dump_bn("dmq1", rsa->dmq1);
+  dump_bn("iqmp", rsa->iqmp);
+}
+
+static void
+pk_genkey_rsa_cb(int step, int n, void *cb_data) {
+  ptpgp_pk_genkey_context_t *c = (ptpgp_pk_genkey_context_t*) cb_data;
+  UNUSED(c);
+
+  /* D("step = %d, n = %d", step, n); */
+
+  switch (step) {
+  case 0:
+    D("generating prime %d", n + 1);
+    break;
+  case 1:
+    D("testing for primality (test #%d)", n + 1);
+    break;
+  case 2:
+    D("rejecting prime %d (not suitable for key)", n + 1);
+    break;
+  case 3:
+    D("found suitable prime for %s", n ? "q" : "p");
+    break;
+  default:
+    W("unknown rsa keygen step: %d", step);
+  }
+
+  /* TODO: map to pk_genkey_cb_t */
+}
+
+static ptpgp_err_t
+pk_genkey_rsa(ptpgp_pk_genkey_context_t *c) {
+  RSA *rsa;
+
+  /* generate key */
+  rsa = RSA_generate_key(c->options.num_bits,
+                         c->options.params.rsa.e, 
+                         pk_genkey_rsa_cb, c);
+
+  /* check for error */
+  if (!rsa)
+    return PTPGP_ERR_ENGINE_PK_GENKEY_FAILED;
+
+  /* dump rsa structure */
+  dump_rsa(rsa);
+
+  /* populate key structure */
+  /* TODO */
+
+  /* free rsa structure */
+  RSA_free(rsa);
+
+  /* return success */
+  return PTPGP_OK;
+}
+
+static ptpgp_err_t
+pk_genkey(ptpgp_pk_genkey_context_t *c) {
+  switch(c->options.algorithm) {
+  case PTPGP_PUBLIC_KEY_TYPE_RSA:
+  case PTPGP_PUBLIC_KEY_TYPE_RSA_ENCRYPT_ONLY:
+  case PTPGP_PUBLIC_KEY_TYPE_RSA_SIGN_ONLY:
+    return pk_genkey_rsa(c);
+  default:
+    return PTPGP_ERR_ENGINE_PK_GENKEY_UNSUPPORTED_ALGORITHM;
+  }
+}
 
 /****************/
 /* init methods */
@@ -424,6 +513,11 @@ engine = {
   .random = {
     .strong = random_strong,
     .nonce  = random_nonce
+  },
+
+  /* public key methods */
+  .pk = {
+    .genkey = pk_genkey
   }
 };
 

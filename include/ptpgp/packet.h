@@ -1,6 +1,5 @@
 /* TODO: */
 typedef void* ptpgp_signature_subpacket_t;
-typedef void* ptpgp_mpi_t;
 
 /* public key encrypted session key packet (tag 1, rfc4880 5.1) */
 typedef struct {

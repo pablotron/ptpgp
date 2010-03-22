@@ -1,6 +1,7 @@
 #ifdef PTPGP_USE_GCRYPT
 #include "internal.h"
 #include <gcrypt.h>
+#include <math.h>
 
 #define GCRYPT_OK GPG_ERR_NO_ERROR
 
@@ -229,6 +230,130 @@ random_nonce(ptpgp_engine_t *e, u8 *dst, size_t dst_len) {
   return PTPGP_OK;
 }
 
+/**********************/
+/* public key methods */
+/**********************/
+
+/* get lenght of number in base 10 */
+static int
+decimal_size(size_t num) {
+  return (int) (0.5 + log(num + 1.0));
+}
+
+static void
+pk_genkey_progress_cb(void *cb_data, 
+                      const char *what,
+                      int p,
+                      int current,
+                      int total) {
+  ptpgp_pk_genkey_context_t *c = (ptpgp_pk_genkey_context_t*) cb_data;
+
+  UNUSED(c);
+  UNUSED(current);
+  UNUSED(total);
+
+  if (!strncmp(what, "primegen", 9)) {
+    switch (p) {
+    case '\n':
+      D("prime generated");
+      break;
+    case '!':
+      D("need to refresh prime number pool");
+      break;
+    case '<':
+    case '>':
+      D("number of bits adjusted (%c)", p);
+      break;
+    case '^':
+      D("searching for a generator");
+      break;
+    case '\'':
+      D("fermat test on 10 candidates failed");
+      break;
+    case ':':
+      D("restart with new random value");
+      break;
+    case '+':
+      D("rabin miller test passed");
+      break;
+    default:
+      W("unknown progress state: %c", p);
+    }
+  }
+}
+
+static void
+dump_sexp(char *name, gcry_sexp_t *s) {
+  char buf[4096];
+  size_t len;
+
+#ifdef PTPGP_DEBUG
+  /* dump parameter s-exp */
+  len = gcry_sexp_sprint(*s, GCRYSEXP_FMT_DEFAULT, buf, sizeof(buf));
+  D("%s = %s", name, buf);
+#else /* !PTPGP_DEBUG */
+  UNUSED(name);
+  UNUSED(s);
+#endif /* PTPGP_DEBUG */
+}
+
+static ptpgp_err_t
+pk_genkey_rsa(ptpgp_pk_genkey_context_t *c) {
+  gcry_sexp_t r, p;
+  size_t err_ofs;
+  int err;
+
+  /* generate parameter s-exp */
+  err = gcry_sexp_build(&p, &err_ofs,
+    "(genkey (rsa (nbits %d:%d)))",
+    decimal_size(c->options.num_bits),
+    c->options.num_bits
+  );
+
+  /* check for error */
+  if (err != GCRYPT_OK)
+    return PTPGP_ERR_ENGINE_PK_GENKEY_FAILED; /* TODO: better error? */
+
+  /* dump parameter s-exp */
+  dump_sexp("param s-exp", &p);
+
+  /* set progress handler */
+  gcry_set_progress_handler(pk_genkey_progress_cb, c);
+
+  /* generate public keypair */
+  err = gcry_pk_genkey(&r, p);
+
+  /* clear progress handler and release parameter s-exp 
+   * (regardless of genkey result) */
+  gcry_set_progress_handler(NULL, NULL);
+  gcry_sexp_release(p);
+
+  /* check for error */
+  if (err != GCRYPT_OK)
+    return PTPGP_ERR_ENGINE_PK_GENKEY_FAILED; /* TODO: better error? */
+
+  /* dump rsa s-exp */
+  dump_sexp("rsa s-exp", &r);
+
+  /* free rsa s-exp */
+  gcry_sexp_release(r);
+
+  /* return success */
+  return PTPGP_OK;
+}
+
+static ptpgp_err_t
+pk_genkey(ptpgp_pk_genkey_context_t *c) {
+  switch(c->options.algorithm) {
+  case PTPGP_PUBLIC_KEY_TYPE_RSA:
+  case PTPGP_PUBLIC_KEY_TYPE_RSA_ENCRYPT_ONLY:
+  case PTPGP_PUBLIC_KEY_TYPE_RSA_SIGN_ONLY:
+    return pk_genkey_rsa(c);
+  default:
+    return PTPGP_ERR_ENGINE_PK_GENKEY_UNSUPPORTED_ALGORITHM;
+  }
+}
+
 /****************/
 /* init methods */
 /****************/
@@ -253,6 +378,11 @@ engine = {
   .random = {
     .strong = random_strong,
     .nonce  = random_nonce
+  },
+
+  /* public key methods */
+  .pk = {
+    .genkey = pk_genkey
   }
 };
 

@@ -122,6 +122,9 @@ static char *errors[] = {
   "random numbers unsupported by this engine",
   "couldn't generate random number",
 
+  /* engine-pk-genkey errors */
+  "key generation failed",
+  "unsupported public key algorithm",
 
   /* sentinel */
   NULL

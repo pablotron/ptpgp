@@ -29,20 +29,25 @@ typedef struct {
   ptpgp_err_t (*nonce)(ptpgp_engine_t *, u8*, size_t);
 } ptpgp_engine_random_handlers_t;
 
+typedef struct {
+  ptpgp_err_t (*genkey)(ptpgp_pk_genkey_context_t *);
+  /* TODO: sign and verify */
+} ptpgp_engine_pk_handlers_t;
+
 /* forward-reference typedef in engine-structs.h */
 struct ptpgp_engine_t_ {
   /* internal engine data */
   void *engine_data;
 
+  /* symmetric encryption methods */
   ptpgp_engine_encrypt_handlers_t encrypt;
+
+  /* message digest methods */
   ptpgp_engine_hash_handlers_t    hash;
+
+  /* random number methods */
   ptpgp_engine_random_handlers_t  random;
 
-  /* crypto callbacks for this engine */
-  /* ptpgp_engine_cb_set_t sign,
-                        verify,
-                        encrypt,
-                        genkey,
-                        hash,
-                        random; */
+  /* public key methods */
+  ptpgp_engine_pk_handlers_t      pk;
 };

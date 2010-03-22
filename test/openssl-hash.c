@@ -56,15 +56,6 @@ hash(ptpgp_engine_t *engine,
   printf("%s %s\n", dst_buf, path);
 }
 
-static void 
-init(ptpgp_engine_t *engine) {
-  /* init ptpgp openssl engine */
-  PTPGP_ASSERT(
-    ptpgp_openssl_engine_init(engine),
-    "init openssl engine"
-  );
-}
-
 static ptpgp_hash_type_t
 find_hash_algorithm(char *key) {
   uint32_t r;
@@ -86,7 +77,7 @@ int main(int argc, char *argv[]) {
     print_usage_and_exit(argv[0], USAGE);
 
   /* init engine */
-  init(&engine);
+  init_openssl(&engine);
 
   /* find hash algorithm */
   hash_algo = find_hash_algorithm(argv[1]);

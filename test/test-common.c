@@ -111,3 +111,41 @@ void file_read(char *path,
   /* close input file */
   file_close(fh);
 }
+
+void 
+init_openssl(ptpgp_engine_t *engine) {
+#ifdef PTPGP_USE_OPENSSL
+  /* init ptpgp openssl engine */
+  PTPGP_ASSERT(
+    ptpgp_openssl_engine_init(engine),
+    "init openssl engine"
+  );
+#else /* !PTPGP_USE_OPENSSL */
+  UNUSED(engine);
+  ptpgp_sys_die("no openssl support");
+#endif /* PTPGP_USE_OPENSSL */
+}
+
+void 
+init_gcrypt(ptpgp_engine_t *engine) {
+#ifdef PTPGP_USE_GCRYPT
+  /* check gcrypt version */
+  if (!gcry_check_version(GCRYPT_VERSION))
+    ptpgp_sys_die("libgcrypt version mismatch");
+
+  /* disable secure memory */
+  gcry_control(GCRYCTL_DISABLE_SECMEM, 0);
+
+  /* finish intializing gcrypt */
+  gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
+
+  /* init ptpgp gcrypt engine */
+  PTPGP_ASSERT(
+    ptpgp_gcrypt_engine_init(engine),
+    "init gcrypt engine"
+  );
+#else /* !PTPGP_USE_GCRYPT */
+  UNUSED(engine);
+  ptpgp_sys_die("no gcrypt support");
+#endif /* PTPGP_USE_GCRYPT */
+}
