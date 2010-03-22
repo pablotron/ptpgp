@@ -830,9 +830,9 @@ retry:
                 return p->last_err = err;
 
               /* get num remaining mpis */
-              p->packet.packet.t6.all.num_mpis = info->num_public_key_mpis;
-              p->packet.packet.t5.num_mpis     = info->num_private_key_mpis;
-              p->num_mpis = info->num_public_key_mpis;
+              p->packet.packet.t6.all.num_mpis = PTPGP_INFO_PUBLIC_KEY_NUM_PUBLIC_MPIS(info);
+              p->packet.packet.t5.num_mpis     = PTPGP_INFO_PUBLIC_KEY_NUM_PRIVATE_MPIS(info);
+              p->num_mpis = PTPGP_INFO_PUBLIC_KEY_NUM_PUBLIC_MPIS(info);
 
               /* send packet info */
               SEND(p, KEY_PACKET_HEADER, 0, 0);
@@ -952,7 +952,7 @@ retry:
 
           /* save algorithm in packet and blcok size in context */
           p->packet.packet.t5.symmetric_algorithm = src[0];
-          p->symmetric_block_size = info->symmetric_block_size;
+          p->symmetric_block_size = PTPGP_INFO_SYMMETRIC_BLOCK_SIZE(info);
 
           /* get IV */
           p->state = STATE(SECRET_KEY_IV);
@@ -987,7 +987,7 @@ retry:
 
           /* save algorithm in packet and blcok size in context */
           p->packet.packet.t5.symmetric_algorithm = src[0];
-          p->symmetric_block_size = info->symmetric_block_size;
+          p->symmetric_block_size = PTPGP_INFO_SYMMETRIC_BLOCK_SIZE(info);
 
           /* clear buffer, shift input */
           p->buf_len = 0;
