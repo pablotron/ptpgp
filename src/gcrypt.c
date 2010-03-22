@@ -206,20 +206,53 @@ encrypt_done(ptpgp_encrypt_context_t *c) {
   return PTPGP_OK;
 }
 
+/******************/
+/* random methods */
+/******************/
+static ptpgp_err_t
+random_strong(ptpgp_engine_t *e, u8 *dst, size_t dst_len) {
+  UNUSED(e);
+
+  gcry_randomize(dst, dst_len, GCRY_VERY_STRONG_RANDOM);
+
+  /* return success */
+  return PTPGP_OK;
+}
+
+static ptpgp_err_t
+random_nonce(ptpgp_engine_t *e, u8 *dst, size_t dst_len) {
+  UNUSED(e);
+
+  gcry_create_nonce(dst, dst_len);
+
+  /* return success */
+  return PTPGP_OK;
+}
+
+/****************/
+/* init methods */
+/****************/
+
 static ptpgp_engine_t 
 engine = {
   /* hash methods */
   .hash = {
-    .init = hash_init,
-    .push = hash_push,
-    .done = hash_done
+    .init   = hash_init,
+    .push   = hash_push,
+    .done   = hash_done
   },
 
   /* symmetric encryption methods */
   .encrypt = {
-    .init = encrypt_init,
-    .push = encrypt_push,
-    .done = encrypt_done
+    .init   = encrypt_init,
+    .push   = encrypt_push,
+    .done   = encrypt_done
+  },
+
+  /* random number methods */
+  .random = {
+    .strong = random_strong,
+    .nonce  = random_nonce
   }
 };
 

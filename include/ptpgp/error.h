@@ -115,6 +115,10 @@ typedef enum {
   PTPGP_ERR_ENGINE_ENCRYPT_PUSH_FAILED, /* push failed */
   PTPGP_ERR_ENGINE_ENCRYPT_DONE_FAILED, /* couldn't finalize symmetric encryption context */
 
+  /* engine-random errors */
+  PTPGP_ERR_ENGINE_RANDOM_UNSUPPORTED, /* random numbers unsupported by this engine */
+  PTPGP_ERR_ENGINE_RANDOM_FAILED, /* couldn't generate random number */
+
   /* sentinel */
   PTPGP_ERR_LAST
 } ptpgp_err_t;

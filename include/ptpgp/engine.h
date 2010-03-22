@@ -23,6 +23,12 @@ typedef struct {
   ptpgp_err_t (*done)(ptpgp_hash_context_t *);
 } ptpgp_engine_hash_handlers_t;
 
+/* random handlers */
+typedef struct {
+  ptpgp_err_t (*strong)(ptpgp_engine_t *, u8*, size_t);
+  ptpgp_err_t (*nonce)(ptpgp_engine_t *, u8*, size_t);
+} ptpgp_engine_random_handlers_t;
+
 /* forward-reference typedef in engine-structs.h */
 struct ptpgp_engine_t_ {
   /* internal engine data */
@@ -30,6 +36,7 @@ struct ptpgp_engine_t_ {
 
   ptpgp_engine_encrypt_handlers_t encrypt;
   ptpgp_engine_hash_handlers_t    hash;
+  ptpgp_engine_random_handlers_t  random;
 
   /* crypto callbacks for this engine */
   /* ptpgp_engine_cb_set_t sign,

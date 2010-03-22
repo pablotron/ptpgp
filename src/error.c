@@ -117,6 +117,11 @@ static char *errors[] = {
   "push failed",
   "couldn't finalize symmetric encryption context",
 
+  /* engine-random errors */
+  "random numbers unsupported by this engine",
+  "couldn't generate random number",
+
+
   /* sentinel */
   NULL
 };

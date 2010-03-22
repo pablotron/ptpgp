@@ -107,6 +107,51 @@ encrypt_done(ptpgp_encrypt_context_t *c) {
   return PTPGP_OK;
 }
 
+/******************/
+/* random methods */
+/******************/
+
+static ptpgp_err_t
+random_strong(ptpgp_engine_t *e, u8 *dst, size_t dst_len) {
+  int err = RAND_bytes(dst, dst_len);
+
+  UNUSED(e);
+
+  /* handle response */
+  switch (err) {
+  case 1:
+    /* return success */
+    return PTPGP_OK;
+  case -1:
+    /* return success */
+    return PTPGP_ERR_ENGINE_RANDOM_UNSUPPORTED;
+  default:
+    return PTPGP_ERR_ENGINE_RANDOM_FAILED;
+  }
+}
+
+static ptpgp_err_t
+random_nonce(ptpgp_engine_t *e, u8 *dst, size_t dst_len) {
+  int err = RAND_bytes(dst, dst_len);
+
+  UNUSED(e);
+
+  /* FIXME: should we warn if err == 0 (e.g., random number is not
+   * cryptographically secure? */
+
+  /* check for error */
+  if (err == -1)
+    return PTPGP_ERR_ENGINE_RANDOM_UNSUPPORTED;
+
+  /* return success */
+  return PTPGP_OK;
+}
+
+
+/****************/
+/* init methods */
+/****************/
+
 static ptpgp_engine_t 
 engine = {
   /* hash methods */
@@ -118,9 +163,15 @@ engine = {
 
   /* symmetric encryption methods */
   .encrypt = {
-    .init = encrypt_init,
-    .push = encrypt_push,
-    .done = encrypt_done
+    .init   = encrypt_init,
+    .push   = encrypt_push,
+    .done   = encrypt_done
+  },
+
+  /* random number methods */
+  .random = {
+    .strong = random_strong,
+    .nonce  = random_nonce
   }
 };
 

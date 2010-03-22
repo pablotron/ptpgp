@@ -31,6 +31,7 @@ extern "C" {
 #include <ptpgp/engine-structs.h>
 #include <ptpgp/engine-hash.h>
 #include <ptpgp/engine-encrypt.h>
+#include <ptpgp/engine-random.h>
 #include <ptpgp/engine.h>
 #include <ptpgp/openssl.h>
 #include <ptpgp/gcrypt.h>
