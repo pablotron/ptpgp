@@ -58,7 +58,7 @@ static ptpgp_type_info_t algos[] = {{
   A(RSA_SIGN_ONLY),             R(MAY),       R(SHOULD_NOT),
   "RSA (Sign-Only)",            "rsa-sign-only",            2, 4
 }, {
-  A(ELGAMEL_ENCRYPT_ONLY),      R(MUST),      R(MUST),
+  A(ELGAMAL_ENCRYPT_ONLY),      R(MUST),      R(MUST),
   "Elgamal (Encrypt-Only)",     "elgamal-encrypt-only",     3, 1
 }, {
   A(DSA),                       R(MUST),      R(MUST),

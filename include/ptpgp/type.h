@@ -92,7 +92,7 @@ typedef enum {
   H(RSA)                      = 1,
   H(RSA_ENCRYPT_ONLY)         = 2,
   H(RSA_SIGN_ONLY)            = 3,
-  H(ELGAMEL_ENCRYPT_ONLY)     = 16,
+  H(ELGAMAL_ENCRYPT_ONLY)     = 16,
   H(DSA)                      = 17,
   H(EC)                       = 18,
   H(ECDSA)                    = 19,
