@@ -134,7 +134,7 @@ get_symmetric_mode(ptpgp_symmetric_mode_type_t t) {
   }
 }
 
-static ptpgp_err_t 
+static ptpgp_err_t
 encrypt_init(ptpgp_encrypt_context_t *c) {
   int a = get_symmetric_algorithm(c->options.algorithm),
       m = get_symmetric_mode(c->options.mode);
@@ -166,8 +166,8 @@ encrypt_init(ptpgp_encrypt_context_t *c) {
 
 #define BUF_SIZE PTPGP_ENCRYPT_CONTEXT_BUFFER_SIZE
 
-static ptpgp_err_t 
-encrypt_push(ptpgp_encrypt_context_t *c, 
+static ptpgp_err_t
+encrypt_push(ptpgp_encrypt_context_t *c,
              u8 *src,
              size_t src_len) {
   gcry_cipher_hd_t h = (gcry_cipher_hd_t) c->engine_data;
@@ -201,7 +201,7 @@ encrypt_push(ptpgp_encrypt_context_t *c,
   return PTPGP_OK;
 }
 
-static ptpgp_err_t 
+static ptpgp_err_t
 encrypt_done(ptpgp_encrypt_context_t *c) {
   gcry_cipher_close((gcry_cipher_hd_t) c->engine_data);
   return PTPGP_OK;
@@ -234,14 +234,99 @@ random_nonce(ptpgp_engine_t *e, u8 *dst, size_t dst_len) {
 /* public key methods */
 /**********************/
 
-/* get lenght of number in base 10 */
-static int
-decimal_size(size_t num) {
-  return (int) (0.5 + log(num + 1.0));
+static void
+dump_key_piece_value(gcry_sexp_t v, char *name) {
+  char *s;
+  u8 buf[4096];
+  gcry_mpi_t n;
+  size_t len;
+  int err;
+
+  /* get name */
+  if ((s = gcry_sexp_nth_string(v, 0)) == NULL) {
+    W("couldn't get value name");
+    return;
+  }
+
+  /* get mpi and convert it to hex */
+  if ((n = gcry_sexp_nth_mpi(v, 1, GCRYMPI_FMT_STD)) == NULL) {
+    W("couldn't get value mpi");
+    gcry_free(s);
+    return;
+  }
+
+  /* convert mpi to hex */
+  err = gcry_mpi_print(GCRYMPI_FMT_HEX, buf, sizeof(buf), &len, n);
+
+  /* check for error */
+  if (err != GCRYPT_OK) {
+    W("couldn't convert mpi to hex");
+    gcry_free(s);
+    gcry_mpi_release(n);
+    return;
+  }
+
+  D("%s %s = %s", name, s, buf);
+
+  gcry_free(s);
+  gcry_mpi_release(n);
 }
 
 static void
-pk_genkey_progress_cb(void *cb_data, 
+dump_key_piece(gcry_sexp_t p, char *name) {
+  gcry_sexp_t v;
+  size_t i, l;
+
+  /* get length of s-exp */
+  l = gcry_sexp_length(p);
+
+  for (i = 1; i < l; i++) {
+    /* get value */
+    if ((v = gcry_sexp_nth(p, i)) == NULL) {
+      W("couldn't get value %ld", i);
+      continue;
+    }
+
+    /* print value */
+    dump_key_piece_value(v, name);
+
+    /* release value */
+    gcry_sexp_release(v);
+  }
+}
+
+static char *key_pieces[] = {
+  "public-key",
+  "private-key",
+  NULL
+};
+
+static void
+dump_key(gcry_sexp_t *k) {
+  gcry_sexp_t t, b;
+  size_t i;
+
+  for (i = 0; key_pieces[i]; i++) {
+    if ((t = gcry_sexp_find_token(*k, key_pieces[i], 0)) != NULL) {
+      /* get body */
+      if ((b = gcry_sexp_nth(t, 1)) == NULL) {
+        W("couldn't get %s sublist body", key_pieces[i]);
+        gcry_sexp_release(t);
+        continue;
+      }
+
+      /* print body */
+      dump_key_piece(b, key_pieces[i]);
+
+      /* free s-exps */
+      gcry_sexp_release(t);
+      gcry_sexp_release(b);
+    }
+  }
+}
+
+static void
+pk_genkey_progress_cb(void *cb_data,
                       const char *what,
                       int p,
                       int current,
@@ -250,7 +335,6 @@ pk_genkey_progress_cb(void *cb_data,
 
   UNUSED(c);
   UNUSED(current);
-  UNUSED(total);
 
   if (!strncmp(what, "primegen", 9)) {
     switch (p) {
@@ -267,7 +351,7 @@ pk_genkey_progress_cb(void *cb_data,
     case '^':
       D("searching for a generator");
       break;
-    case '\'':
+    case '.':
       D("fermat test on 10 candidates failed");
       break;
     case ':':
@@ -279,6 +363,8 @@ pk_genkey_progress_cb(void *cb_data,
     default:
       W("unknown progress state: %c", p);
     }
+  } else if (!strncmp(what, "need_entropy", 13)) {
+    W("need entropy: %d bytes remaining", total);
   }
 }
 
@@ -289,7 +375,7 @@ dump_sexp(char *name, gcry_sexp_t *s) {
 
 #ifdef PTPGP_DEBUG
   /* dump parameter s-exp */
-  len = gcry_sexp_sprint(*s, GCRYSEXP_FMT_DEFAULT, buf, sizeof(buf));
+  len = gcry_sexp_sprint(*s, GCRYSEXP_FMT_CANON, buf, sizeof(buf));
   D("%s = %s", name, buf);
 #else /* !PTPGP_DEBUG */
   UNUSED(name);
@@ -304,9 +390,9 @@ pk_genkey_rsa(ptpgp_pk_genkey_context_t *c) {
   int err;
 
   /* generate parameter s-exp */
+  /* FIXME: remove transient-key */
   err = gcry_sexp_build(&p, &err_ofs,
-    "(genkey (rsa (nbits %d:%d)))",
-    decimal_size(c->options.num_bits),
+    "(genkey (rsa (nbits %d) (transient-key)))",
     c->options.num_bits
   );
 
@@ -323,7 +409,7 @@ pk_genkey_rsa(ptpgp_pk_genkey_context_t *c) {
   /* generate public keypair */
   err = gcry_pk_genkey(&r, p);
 
-  /* clear progress handler and release parameter s-exp 
+  /* clear progress handler and release parameter s-exp
    * (regardless of genkey result) */
   gcry_set_progress_handler(NULL, NULL);
   gcry_sexp_release(p);
@@ -334,6 +420,8 @@ pk_genkey_rsa(ptpgp_pk_genkey_context_t *c) {
 
   /* dump rsa s-exp */
   dump_sexp("rsa s-exp", &r);
+
+  dump_key(&r);
 
   /* free rsa s-exp */
   gcry_sexp_release(r);
@@ -358,7 +446,7 @@ pk_genkey(ptpgp_pk_genkey_context_t *c) {
 /* init methods */
 /****************/
 
-static ptpgp_engine_t 
+static ptpgp_engine_t
 engine = {
   /* hash methods */
   .hash = {
@@ -386,7 +474,7 @@ engine = {
   }
 };
 
-ptpgp_err_t 
+ptpgp_err_t
 ptpgp_gcrypt_engine_init(ptpgp_engine_t *r) {
   /* make sure gcrypt was properly initialized by the application */
   if (!gcry_control(GCRYCTL_INITIALIZATION_FINISHED_P))

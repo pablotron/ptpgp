@@ -8,3 +8,4 @@
 [ ] docs: openssl _may_ not support camellia or idea either
 [ ] should i disable openssl encrypt padding?
 [ ] pool cipher contexts to defer malloc/free?
+[ ] remove transient-key from gcrypt test

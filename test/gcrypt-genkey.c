@@ -25,7 +25,7 @@ find_algorithm(char *key) {
 
 static void
 generate_key(ptpgp_engine_t *e,
-             ptpgp_public_key_type_t algo, 
+             ptpgp_public_key_type_t algo,
              size_t num_bits) {
   ptpgp_pk_genkey_context_t c;
   ptpgp_pk_genkey_options_t o;
