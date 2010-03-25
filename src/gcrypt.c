@@ -235,6 +235,49 @@ random_nonce(ptpgp_engine_t *e, u8 *dst, size_t dst_len) {
 /**********************/
 
 static void
+pk_genkey_progress_cb(void *cb_data,
+                      const char *what,
+                      int p,
+                      int current,
+                      int total) {
+  ptpgp_pk_genkey_context_t *c = (ptpgp_pk_genkey_context_t*) cb_data;
+
+  UNUSED(c);
+  UNUSED(current);
+
+  if (!strncmp(what, "primegen", 9)) {
+    switch (p) {
+    case '\n':
+      D("prime generated");
+      break;
+    case '!':
+      D("need to refresh prime number pool");
+      break;
+    case '<':
+    case '>':
+      D("number of bits adjusted (%c)", p);
+      break;
+    case '^':
+      D("searching for a generator");
+      break;
+    case '.':
+      D("fermat test on 10 candidates failed");
+      break;
+    case ':':
+      D("restart with new random value");
+      break;
+    case '+':
+      D("rabin miller test passed");
+      break;
+    default:
+      W("unknown progress state: %c", p);
+    }
+  } else if (!strncmp(what, "need_entropy", 13)) {
+    W("need entropy: %d bytes remaining", total);
+  }
+}
+
+static void
 dump_key_piece_value(gcry_sexp_t v, char *name) {
   char *s;
   u8 buf[4096];
@@ -325,47 +368,207 @@ dump_key(gcry_sexp_t *k) {
   }
 }
 
-static void
-pk_genkey_progress_cb(void *cb_data,
-                      const char *what,
-                      int p,
-                      int current,
-                      int total) {
-  ptpgp_pk_genkey_context_t *c = (ptpgp_pk_genkey_context_t*) cb_data;
+static ptpgp_err_t
+pk_set_rsa_key_value(ptpgp_pk_key_t *dst,
+                     char *s,
+                     u8 *src,
+                     size_t src_len) {
+  ptpgp_mpi_t *n;
+  size_t i;
 
-  UNUSED(c);
-  UNUSED(current);
+  switch (s[0]) {
+  case 'n':
+    n = &(dst->rsa.n);
+    break;
+  case 'e':
+    n = &(dst->rsa.e);
+    break;
+  case 'd':
+    n = &(dst->rsa.d);
+    break;
+  case 'p':
+    /* store these values in OpenSSL order */
+    n = &(dst->rsa.q);
+    break;
+  case 'q':
+    /* store these values in OpenSSL order */
+    n = &(dst->rsa.p);
+    break;
+  case 'u':
+    /* 
+     * We deliberately ignore this, because it ca be computed from
+     * p and q.  from the gcrypt documentation:
+     *
+     *   For signing and decryption the parameters (p, q, u) are
+     *   optional but greatly improve the performance. Either all of
+     *   these optional parameters must be given
+     *   or none of them. They are mandatory for gcry_pk_testkey.
+     *
+     *   Note that OpenSSL uses slighly different parameters: q < p and
+     *   u = q^-1 \bmod p. To use these parameters you will need to swap
+     *   the values and recompute u. Here is example code to do this:
+     *
+     *     if (gcry_mpi_cmp(p, q) > 0) {
+     *       gcry_mpi_swap(p, q);
+     *       gcry_mpi_invm(u, p, q);
+     *     }
+     *
+     */
 
-  if (!strncmp(what, "primegen", 9)) {
-    switch (p) {
-    case '\n':
-      D("prime generated");
-      break;
-    case '!':
-      D("need to refresh prime number pool");
-      break;
-    case '<':
-    case '>':
-      D("number of bits adjusted (%c)", p);
-      break;
-    case '^':
-      D("searching for a generator");
-      break;
-    case '.':
-      D("fermat test on 10 candidates failed");
-      break;
-    case ':':
-      D("restart with new random value");
-      break;
-    case '+':
-      D("rabin miller test passed");
-      break;
-    default:
-      W("unknown progress state: %c", p);
-    }
-  } else if (!strncmp(what, "need_entropy", 13)) {
-    W("need entropy: %d bytes remaining", total);
+    /* return success */
+    return PTPGP_OK;
+  default:
+    W("unknown rsa key parameter name: %s", s);
+    return PTPGP_ERR_ENGINE_PK_GENKEY_UNKNOWN_KEY_PARAMETER_NAME;
   }
+
+  /* set approximate bit count */
+  n->num_bits = (src[0] << 8 | src[1]) * 8;
+
+  /* determine exact bit count */
+  for (i = 0; i < 8; i++) {
+    if (src[2] & (1 << (7 - i))) {
+      n->num_bits -= i;
+      break;
+    }
+  }
+
+  /* check buffer size */
+  if (src_len - 2 > PTPGP_MPI_BUF_SIZE)
+    return PTPGP_ERR_ENGINE_PK_GENKEY_MPI_TOO_LARGE;
+
+  /* copy data */
+  memcpy(n->data, src + 2, src_len - 2);
+
+  /* return success */
+  return PTPGP_OK;
+}
+
+static ptpgp_err_t
+pk_decode_rsa_key_value_pair_sexp(ptpgp_pk_key_t *dst,
+                                  gcry_sexp_t src,
+                                  char *list_name) {
+  char *s;
+  u8 buf[8194]; /* 8192 + 2 (for length header) */
+  gcry_mpi_t n;
+  size_t len;
+  int err;
+  ptpgp_err_t r;
+
+  /* get name */
+  if ((s = gcry_sexp_nth_string(src, 0)) == NULL) {
+    W("couldn't get value name");
+    return PTPGP_ERR_ENGINE_PK_GENKEY_MISSING_KEY_PARAMETER_NAME;
+  }
+
+  /* get mpi (FIXME: should the format be _USG?) */
+  if ((n = gcry_sexp_nth_mpi(src, 1, GCRYMPI_FMT_USG)) == NULL) {
+    W("couldn't get value mpi");
+    gcry_free(s);
+    return PTPGP_ERR_ENGINE_PK_GENKEY_MISSING_KEY_PARAMETER_VALUE;
+  }
+
+  /* decode mpi to buffer */
+  err = gcry_mpi_scan(&n, GCRYMPI_FMT_PGP, buf, sizeof(buf), &len);
+
+  /* check for error */
+  if (err == GCRYPT_OK) {
+    /* save value */
+    r = pk_set_rsa_key_value(dst, s, buf, len);
+  } else {
+    /* warn about error, set result */
+    W("couldn't decode mpi %s.%s", list_name, s);
+
+    /* return error */
+    r = PTPGP_ERR_ENGINE_PK_GENKEY_CONVERT_MPI_FAILED;
+  }
+
+  /* free name and value */
+  gcry_free(s);
+  gcry_mpi_release(n);
+
+  /* return result */
+  return r;
+}
+
+static ptpgp_err_t
+pk_decode_rsa_key_value_list_sexp(ptpgp_pk_key_t *dst,
+                                  gcry_sexp_t src,
+                                  char *list_name) {
+  gcry_sexp_t v;
+  size_t i, l;
+  ptpgp_err_t err;
+
+  /* get length of s-exp */
+  l = gcry_sexp_length(src);
+
+  for (i = 1; i < l; i++) {
+    /* get value pair */
+    if ((v = gcry_sexp_nth(src, i)) == NULL) {
+      W("couldn't get value %ld for token %s", i, list_name);
+      return PTPGP_ERR_ENGINE_PK_GENKEY_INCOMPLETE_KEY_PARAMETER;
+    }
+
+    /* decode value pair */
+    err = pk_decode_rsa_key_value_pair_sexp(dst, v, list_name);
+
+    /* release value pair */
+    gcry_sexp_release(v);
+
+    /* check for error */
+    if (err != PTPGP_OK)
+      return err;
+  }
+
+  /* return success */
+  return PTPGP_OK;
+}
+
+static char *
+rsa_key_tokens[] = {
+  "public-key",
+  "private-key",
+  NULL
+};
+
+ptpgp_err_t
+pk_decode_rsa_key_sexp(ptpgp_pk_key_t *dst, gcry_sexp_t src) {
+  gcry_sexp_t t, b;
+  size_t i;
+  ptpgp_err_t err;
+
+  for (i = 0; key_pieces[i]; i++) {
+    /* find token */
+    if ((t = gcry_sexp_find_token(src, key_pieces[i], 0)) == NULL) {
+      W("couldn't find token %s", rsa_key_tokens[i]);
+      return PTPGP_ERR_ENGINE_PK_GENKEY_INCOMPLETE_KEY;
+    }
+
+    /* get body */
+    b = gcry_sexp_nth(t, 1);
+
+    /* unconditionally release token s-exp */
+    gcry_sexp_release(t);
+
+    /* check for error */
+    if (b == NULL) {
+      W("couldn't get sublist body for token %s", rsa_key_tokens[i]);
+      return PTPGP_ERR_ENGINE_PK_GENKEY_INCOMPLETE_KEY;
+    }
+
+    /* decode value list */
+    err = pk_decode_rsa_key_value_list_sexp(dst, b, rsa_key_tokens[i]);
+
+    /* unconditionally release body exp */
+    gcry_sexp_release(b);
+
+    /* check for error */
+    if (err != PTPGP_OK) 
+      return err;
+  }
+
+  /* return success */
+  return PTPGP_OK;
 }
 
 static void
@@ -387,6 +590,7 @@ static ptpgp_err_t
 pk_genkey_rsa(ptpgp_pk_genkey_context_t *c) {
   gcry_sexp_t r, p;
   size_t err_ofs;
+  ptpgp_err_t ptpgp_err;
   int err;
 
   /* generate parameter s-exp */
@@ -420,18 +624,29 @@ pk_genkey_rsa(ptpgp_pk_genkey_context_t *c) {
 
   /* dump rsa s-exp */
   dump_sexp("rsa s-exp", &r);
-
   dump_key(&r);
+
+  /* decode and save key */
+  ptpgp_err = pk_decode_rsa_key_sexp(&(c->key), r);
 
   /* free rsa s-exp */
   gcry_sexp_release(r);
 
-  /* return success */
-  return PTPGP_OK;
+  /* TODO: */
+  /* dump_decoded_key(&(c->key)); */
+
+  /* return result */
+  return ptpgp_err;
 }
 
 static ptpgp_err_t
 pk_genkey(ptpgp_pk_genkey_context_t *c) {
+  /* clear output key */
+  memset(&(c->key), 0, sizeof(ptpgp_pk_key_t));
+
+  /* save algorithm */
+  c->key.algorithm = c->options.algorithm;
+
   switch(c->options.algorithm) {
   case PTPGP_PUBLIC_KEY_TYPE_RSA:
   case PTPGP_PUBLIC_KEY_TYPE_RSA_ENCRYPT_ONLY:

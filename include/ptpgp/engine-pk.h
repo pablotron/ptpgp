@@ -27,6 +27,9 @@ typedef struct {
       uint32_t placeholder;
     } dsa;
   } params;
+
+  /* output key */
+  ptpgp_pk_key_t key;
 } ptpgp_pk_genkey_options_t;
 
 struct ptpgp_pk_genkey_context_t_ {

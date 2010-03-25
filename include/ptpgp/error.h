@@ -123,6 +123,13 @@ typedef enum {
   /* engine-pk-genkey errors */
   PTPGP_ERR_ENGINE_PK_GENKEY_FAILED, /* key generation failed */
   PTPGP_ERR_ENGINE_PK_GENKEY_UNSUPPORTED_ALGORITHM, /* unsupported public key algorithm */
+  PTPGP_ERR_ENGINE_PK_GENKEY_UNKNOWN_KEY_PARAMETER_NAME, /* unknown key parameter (bug?) */
+  PTPGP_ERR_ENGINE_PK_GENKEY_MPI_TOO_LARGE, /* generated MPI too large */
+  PTPGP_ERR_ENGINE_PK_GENKEY_MISSING_KEY_PARAMETER_NAME, /* missing key parameter name */
+  PTPGP_ERR_ENGINE_PK_GENKEY_MISSING_KEY_PARAMETER_VALUE, /* missing key parameter value */
+  PTPGP_ERR_ENGINE_PK_GENKEY_CONVERT_MPI_FAILED, /* couldn't convert MPI from engine to native format */
+  PTPGP_ERR_ENGINE_PK_GENKEY_INCOMPLETE_KEY_PARAMETER, /* incomplete key parameter in generated key */
+  PTPGP_ERR_ENGINE_PK_GENKEY_INCOMPLETE_KEY, /* incomplete generated key */
 
   /* sentinel */
   PTPGP_ERR_LAST

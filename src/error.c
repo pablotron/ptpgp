@@ -125,6 +125,13 @@ static char *errors[] = {
   /* engine-pk-genkey errors */
   "key generation failed",
   "unsupported public key algorithm",
+  "unknown key parameter (bug?)",
+  "generated MPI too large",
+  "missing key parameter name",
+  "missing key parameter value",
+  "couldn't convert MPI from engine to native format",
+  "incomplete key parameter in generated key",
+  "incomplete generated key",
 
   /* sentinel */
   NULL
